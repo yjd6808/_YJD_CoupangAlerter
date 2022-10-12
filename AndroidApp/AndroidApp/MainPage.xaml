@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="AndroidApp.MainPage">
+
+    <StackLayout x:Name="StackLayoutMain">
+        <Grid Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="0"
+                   HorizontalTextAlignment="Center"
+                   VerticalTextAlignment="Center"
+                   Text="알림 범위"
+                   FontSize="24">
+            </Label>
+            <Entry Grid.Column="1"
+                   Keyboard="Numeric"
+                   Text="5">
+            </Entry>
+
+        </Grid>
+
+        <Button Text="Create Notification"
+                HorizontalOptions="Center"
+                VerticalOptions="Start"
+                Clicked="OnSendClick" />
+        <Label Text="Click the button below to schedule a local notification for in 10 seconds time."
+               TextColor="Red"
+               HorizontalOptions="Center"
+               VerticalOptions="Start" />
+        <Button Text="Create Notification"
+                HorizontalOptions="Center"
+                VerticalOptions="Start"
+                Clicked="OnScheduleClick" />
+    </StackLayout>
+</ContentPage>
