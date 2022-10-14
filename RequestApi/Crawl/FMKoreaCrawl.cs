@@ -181,7 +181,8 @@ namespace RequestApi.Crawl
 
                 _categoryNameMap.TryGetValue(boardType_, out FMBoardType boardType);
 
-                results.Add(new FMKoreaResult(
+                results.Add(new FMKoreaCrawlResult(
+                    long.Parse(url.JoinAllNumber()),
                     boardType,
                     todayPost,
                     url,

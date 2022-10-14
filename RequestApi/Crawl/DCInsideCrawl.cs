@@ -78,7 +78,7 @@ namespace RequestApi.Crawl
 
                 bool isAnonymous = ip != null;
                 
-                results.Add(new DCInsideResult(
+                results.Add(new DCInsideCrawlResult(
                         no,
                         header,
                         MainUrl + url,
