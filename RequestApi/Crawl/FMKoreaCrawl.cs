@@ -29,11 +29,11 @@ namespace RequestApi.Crawl
 
     public enum FMSearchOption
     {
+        NickName,           // 닉네임
         TitleContent,       // 제목 + 내용
         Title,              // 제목
         Content,            // 내용
         Comment,            // 댓글
-        NickName,           // 닉네임
         None,
     }
 

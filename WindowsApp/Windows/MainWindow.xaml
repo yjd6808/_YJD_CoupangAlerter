@@ -5,8 +5,346 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WindowsApp"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" Closed="MainWindow_OnClosed">
+        Height="770" Width="350" Closed="MainWindow_OnClosed" WindowStyle="None" FontSize="16" MouseDown="MainWindow_OnMouseDown" Loaded="MainWindow_OnLoaded">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="200"></RowDefinition>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
 
+
+        <!-- 0 -->
+        <Grid Grid.Row ="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="40"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <!-- 0 -->
+            <TextBlock Name="_tblStatusBar"
+                       Text="상태 표시줄" 
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"/>
+
+            <!-- 1 -->
+            <Button Grid.Column="1" Click="ButtonBase_OnClick" VerticalAlignment="Stretch">
+                <Image Source="pack://application:,,,/Resources/Icons/icons8-close-144.png">
+                </Image>
+            </Button>
+        </Grid>
+
+        <!-- 1 -->
+
+        <ListView Grid.Row="1"
+                  x:Name="_livLog">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"></ColumnDefinition>
+                            <ColumnDefinition Width="40"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Time}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   Foreground="{Binding NameForeground}"
+                                   TextDecorations="{Binding ContentDecoration}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="2"
+                                Background="#00000000"
+                                BorderThickness="0"
+                                HorizontalContentAlignment="Center"
+                                Click="_livLog_ItemClick"
+                                Cursor="Hand">
+                            <TextBlock Text="{Binding Content}"
+                                       Foreground="{Binding ContentForeground}"
+                                       TextDecorations="{Binding ContentDecoration}"/>
+                        </Button>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- 2 -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Name="_btnStartCrawling" Click="_btnStartCrawling_OnClick">시작</Button>
+            <Button Grid.Column="1" Name="_btnStopCrawling" Click="_btnStopCrawling_OnClick">중지</Button>
+        </Grid>
+
+        <!-- 3 -->
+        <DockPanel Grid.Row="3"
+                   VerticalAlignment="Top">
+            <TabControl DockPanel.Dock="Top"
+                        Name="_tbcCrawl"
+                        SelectionChanged="TabControl_OnSelectionChanged">
+
+                <TabItem Header="디시인사이드"
+                         IsSelected="True">
+                    <StackPanel Height="230">
+                        <TextBlock Text="요청 목록"></TextBlock>
+                        <ListView Name="_livDCCrawlList"
+                                  MouseDoubleClick="_livDCCrawlList_OnMouseDoubleClick"
+                                  Height="150"/>
+
+                        <!-- 크롤링 기능 -->
+                        <Grid Height="60">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="0"
+                                       Text="카테고리"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"></TextBlock>
+                            <ComboBox Grid.Row="0"
+                                      Grid.Column="1"
+                                      Name="_cbDCCrawlCategory"
+                                      SelectedIndex="0">
+                                <ComboBoxItem>전체글</ComboBoxItem>
+                                <ComboBoxItem>개념글</ComboBoxItem>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Text="페이지"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Row="1"
+                                     Grid.Column="1"
+                                     Text="1"
+                                     PreviewTextInput="Number_PreviewTextInput"
+                                     Name="_tbDCCrawlPage"/>
+                        </Grid>
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="에펨코리아">
+                    <StackPanel Height="290">
+                        <TextBlock Text="요청 목록"></TextBlock>
+                        <ListView Name="_livFMCrawlList"
+                                  Height="150"></ListView>
+
+                        <!-- 크롤링 기능 -->
+                        <Grid Height="120">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="0"
+                                       Text="카테고리"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"></TextBlock>
+                            <ComboBox Grid.Row="0"
+                                      Grid.Column="1"
+                                      Name="_cbFMCrawlCategory"
+                                      SelectedIndex="0">
+                                <ComboBoxItem>전체</ComboBoxItem>
+                                <ComboBoxItem>인기</ComboBoxItem>
+                                <ComboBoxItem>잡담</ComboBoxItem>
+                                <ComboBoxItem>국내주식</ComboBoxItem>
+                                <ComboBoxItem>해외주식</ComboBoxItem>
+                                <ComboBoxItem>질문</ComboBoxItem>
+                                <ComboBoxItem>종목추천 분석</ComboBoxItem>
+                                <ComboBoxItem>정보 공유</ComboBoxItem>
+                                <ComboBoxItem>이벤트</ComboBoxItem>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Text="페이지"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Row="1"
+                                     Grid.Column="1" 
+                                     Text="1"
+                                     PreviewTextInput="Number_PreviewTextInput"
+                                     Name="_tbFMCrawlPage"/>
+
+
+                            <CheckBox Grid.Row="2"
+                                      Grid.Column="0"
+                                      Name="_chkbFMCrawlSearchOptionEnable"
+                                      Checked="_chkbFMCrawlSearchOptionEnable_OnChecked"
+                                      Unchecked="_chkbFMCrawlSearchOptionEnable_OnUnchecked"
+                                      VerticalAlignment="Center">
+                            </CheckBox>
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Name="_tblbFMCrawlSearchOption"
+                                       Text="검색 타입"
+                                       Margin="7, 0, 0, 0"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"></TextBlock>
+
+                            <ComboBox Grid.Row="2"
+                                      Grid.Column="1"
+                                      Name="_cbFMCrawlSearchOption"
+                                      SelectedIndex="0">
+                                <ComboBoxItem>닉네임</ComboBoxItem>
+                                <ComboBoxItem>제목 + 내용</ComboBoxItem>
+                                <ComboBoxItem>제목</ComboBoxItem>
+                                <ComboBoxItem>내용</ComboBoxItem>
+                                <ComboBoxItem>댓글</ComboBoxItem>
+                            </ComboBox>
+
+                            <CheckBox Grid.Row="3"
+                                      Grid.Column="0"
+                                      VerticalAlignment="Center"
+                                      Name="_chkbFMCrawlSearchContentEnable"
+                                      Checked="_chkbFMCrawlSearchContentEnable_OnChecked"
+                                      Unchecked="_chkbFMCrawlSearchContentEnable_OnUnchecked">
+                            </CheckBox>
+
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="0"
+                                       Name="_tblbFMCrawlSearchContent"
+                                       Text="검색 내용"
+                                       Margin="7, 0, 0, 0"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"></TextBlock>
+
+                            <TextBox Grid.Row="3"
+                                     Grid.Column="1"
+                                     Name="_tbFMCrawlSearchContent"/>
+                        </Grid>
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="프로그램 설정">
+                    <!-- 기능 없음-->
+                    <TextBlock HorizontalAlignment="Center">아직 기능 없음</TextBlock>
+                </TabItem>
+
+            </TabControl>
+
+            <!-- 크롤링 기능 -->
+            <Grid Height="90"
+                  Name="_gridCommonTaskOption"
+                  DockPanel.Dock="Top"
+                  Margin="3, 0, 0, 0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="*"></RowDefinition>
+                </Grid.RowDefinitions>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Text="매칭 타입"
+                           MouseEnter="TextBlock_OnMouseEnter"
+                           MouseLeave="TextBlock_OnMouseLeave"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"></TextBlock>
+                <ComboBox Grid.Row="0"
+                          Grid.Column="1"
+                          Name="_cbCrawlMatchType"
+                          SelectedIndex="0">
+                    <ComboBoxItem>제목</ComboBoxItem>
+                    <ComboBoxItem>닉네임</ComboBoxItem>
+                </ComboBox>
+
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           Text="문자열 체크"
+                           MouseEnter="TextBlock_OnMouseEnter"
+                           MouseLeave="TextBlock_OnMouseLeave"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+
+                <ComboBox Grid.Row="1"
+                          Grid.Column="1"
+                          Name="_cbCrawlStringMatchRule"
+                          SelectedIndex="0">
+                    <ComboBoxItem>일부 포함</ComboBoxItem>
+                    <ComboBoxItem>완전 일치</ComboBoxItem>
+                </ComboBox>
+
+                <TextBlock Grid.Row="2"
+                           Grid.Column="0"
+                           Text="매칭 내용"
+                           MouseEnter="TextBlock_OnMouseEnter"
+                           MouseLeave="TextBlock_OnMouseLeave"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+                <TextBox Grid.Row="2"
+                         Grid.Column="1" 
+                         Name="_tbMatchString"/>
+            </Grid>
+
+            <Rectangle Fill="Black"
+                       Height="1"
+                       Opacity="0.2"
+                       Margin="0, 5"></Rectangle>
+
+            <Grid Name="_gridCrawllistManipulationContainer"
+                  Height="30">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="2*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <Button Name="_btnCrawlRemove"
+                        Grid.Column="0"
+                        IsEnabled="False"
+                        Content="선택 제거" />
+                <Button Name="_btnCrawlModify"
+                        Grid.Column="1"
+                        IsEnabled="False"
+                        Content="선택 수정" />
+                <Button Name="_btnCrawlAdd"
+                        Grid.Column="2"
+                        IsEnabled="False"
+                        Content="추가" />
+            </Grid>
+        </DockPanel>
     </Grid>
 </Window>

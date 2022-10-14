@@ -12,10 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Resources\Sound\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="System.Speech" Version="6.0.0" />
   </ItemGroup>
 

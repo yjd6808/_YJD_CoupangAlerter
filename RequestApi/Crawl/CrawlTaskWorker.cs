@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using RequestApi.Utils;
 
 namespace RequestApi.Crawl
 {
@@ -86,7 +87,7 @@ namespace RequestApi.Crawl
                 {
                     // CrawlTaskManager의 OnTick() 함수가 실행완료되어서 _taskQueue에 크롤링 작업들이 모두 찬 경우
                     // CrawlTaskManager에서 _waitor로 시그널을 보내주도록 하였다.
-                    Waitor.WaitOne();
+                    Waitor.ReleaseAcquireWaitOne(this);
 
                     if (!_running)
                         return;
@@ -101,11 +102,9 @@ namespace RequestApi.Crawl
                         cur.Value.Do();
                         cur = cur.Next;
 
+                        // 처리한 작업은 삭제해주자.
                         _taskQueue.Remove(temp);
-
-                        Monitor.Exit(this);
-                        Thread.Sleep(_delay);
-                        Monitor.Enter(this);
+                        ThreadExtension.ReleaseAcquireSleep(this, _delay);
                     }
 
                     // 작업을 마치면 CrawlTaskManager로 시그널을 보내줘서 작업이 완료됬음을 알려준다.

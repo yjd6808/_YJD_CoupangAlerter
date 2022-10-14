@@ -1,8 +1,4 @@
-﻿/*
- *
- */
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,15 +10,16 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RequestApi.Crawl.Result;
 
+#pragma warning disable 0168        // local variable not used
+
 namespace RequestApi.Crawl
 {
     public delegate void CrawlFailed(CrawlTask task);
     public delegate void CrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlResult);
-    public delegate void CrawlMatched(CrawlTask crawl, CrawlResult matchedResult);
+    public delegate void CrawlMatched(CrawlTask crawl, MatchedCrawlResult matchedResult);
 
     public class CrawlTaskManager
     {
-        
         public bool Running { get; private set; }
         public bool HasTask
         {
@@ -35,23 +32,25 @@ namespace RequestApi.Crawl
             }
         }
 
-        public int[] CrawlDelay { get; }    // 각 쓰레드마다 하나의 원소를 접근해서 사용하므로 락은 필요 없음
+        public int[] CrawlDelay { get; }
+        public Statistics Stat { get; }
 
-        // 게시글 매칭 판정 시간 => 30분
-        public static TimeSpan MatchingRange => new TimeSpan(0, 30, 0);
+
 
         // 매칭 판정된 게시글을 얼마나 기록할지 => 1일
+        // 이걸 기록안하면 매칭된 게시글 결과 정보가 계속 누적되게 될 수 있으므로 주기적으로 확인해서 비워줄 필요가 있다.
         public static TimeSpan ExpiredDuration => new TimeSpan(1, 0, 0, 0);
 
 
         private List<CrawlTask> _crawlList;
-        private List<MatchedCrawlResult> _completedResults;
+        private List<MatchedCrawlResult> _completedResults;     // 매칭된 게시글 결과들. (매칭 될 때마다 기록을 해서 중복 검출이 되지 않도록 막아준다.)
 
         private int _delay;
         private Timer _workerTimer;
         private CrawlTaskWorker[] _taskWorkers;
         private AutoResetEvent[] _taskSignals;      
         private AutoResetEvent[] _taskWaitors;
+
 
         public CrawlFailed OnCrawlFailed;
         public CrawlSuccess OnCrawlSuccess;
@@ -67,6 +66,7 @@ namespace RequestApi.Crawl
             CrawlDelay = new int[CrawlType.Max];
             CrawlDelay[CrawlType.FMKorea] = 100;
             CrawlDelay[CrawlType.DCInside] = 100;
+            Stat = new Statistics();
 
             _delay = delay;
             _crawlList = new List<CrawlTask>();
@@ -95,6 +95,10 @@ namespace RequestApi.Crawl
                 CrawlType.DCInside
             );
 
+            OnCrawlMatched += (crawl, result) =>
+            {
+                lock (this) _completedResults.Add(result);
+            };
         }
 
         public void Start()
@@ -185,15 +189,19 @@ namespace RequestApi.Crawl
 
                 CrawlDelay[CrawlType.DCInside] = int.Parse(root["dcCrawlDelay"].ToString());
                 CrawlDelay[CrawlType.FMKorea] = int.Parse(root["fmCrawlDelay"].ToString());
-                
+                CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
+
                 foreach (JObject crawlObj in crawlArray)
                 {
                     int crawlType = int.Parse(crawlObj["crawlType"].ToString());
+                    long uid = long.Parse(crawlObj["uid"].ToString());
+                    string taskName = crawlObj["taskName"].ToString();
                     int page = int.Parse(crawlObj["page"].ToString());
                     int boardType = int.Parse(crawlObj["boardType"].ToString());
-                    int matchRule = int.Parse(crawlObj["matchRule"].ToString());
+                    int matchRule = int.Parse(crawlObj["stringMatchRule"].ToString());
                     int matchType = int.Parse(crawlObj["matchType"].ToString());
                     string matchString = crawlObj["matchString"].ToString();
+                    int matchingRangeMinute = int.Parse(crawlObj["matchingRangeMinute"].ToString());
                     AbstractCrawl crawl = null;
                     switch (crawlType)
                     {
@@ -210,7 +218,18 @@ namespace RequestApi.Crawl
                     }
 
                     if (crawl == null) throw new Exception("파싱 제대로 안됨");
-                    _crawlList.Add(new CrawlTask(crawl, matchString, (CrawlMatchRule)matchRule, (CrawlMatchType)matchType, this));
+
+                    var task = new CrawlTask(
+                        taskName,
+                        crawl, 
+                        matchString, 
+                        (CrawlStringMatchRule)matchRule,
+                        (CrawlMatchType)matchType, 
+                        matchingRangeMinute, 
+                        this,
+                        uid
+                    );
+                    _crawlList.Add(task);
                 }
 
 
@@ -228,8 +247,6 @@ namespace RequestApi.Crawl
 
         public void SaveTaskFile()
         {
-            if (Running) throw new Exception("먼저 정지해주세요.");
-
             string saveDir = Path.Combine(Environment.CurrentDirectory, s_configDirName);
             string saveFilePath = Path.Combine(saveDir, s_taskFileName);
 
@@ -245,9 +262,11 @@ namespace RequestApi.Crawl
                 {
                     JObject crawlObj = new JObject();
 
-                    crawlObj.Add("crawlType", (int)crawlTask.CrawlType);
+                    crawlObj.Add("uid", crawlTask.UID);
+                    crawlObj.Add("taskName", crawlTask.TaskName);
+                    crawlObj.Add("crawlType", crawlTask.CrawlType);
                     crawlObj.Add("matchString", crawlTask.MatchString);
-                    crawlObj.Add("matchRule", (int)crawlTask.MatchRule);
+                    crawlObj.Add("stringMatchRule", (int)crawlTask.StringMatchRule);
                     crawlObj.Add("matchType", (int)crawlTask.MatchType);
 
                     switch (crawlTask.CrawlType)
@@ -273,6 +292,7 @@ namespace RequestApi.Crawl
             root.Add("crawls", crawlArray);
             root.Add("dcCrawlDelay", CrawlDelay[CrawlType.DCInside]);
             root.Add("fmCrawlDelay", CrawlDelay[CrawlType.FMKorea]);
+            root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
 
             File.WriteAllText(saveFilePath, root.ToString());
         }
@@ -322,10 +342,12 @@ namespace RequestApi.Crawl
             }
         }
 
-        public void RegisterDCCrawl(string matchString, CrawlMatchRule matchRule, CrawlMatchType matchType, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        
+        // 빌더 패턴 고려할 것
+        public void RegisterDCCrawl(string taskName, string matchString, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, DCBoardType boardType = DCBoardType.전체글, int page = 1)
         {
             AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
-            CrawlTask crawlTask = new CrawlTask(crawl, matchString, matchRule, matchType, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchString, stringMatchRule, matchType, matchingRangeMinute, this);
             
             lock (this)
                 _crawlList.Add(crawlTask);
@@ -333,10 +355,10 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        public void RegisterFMCrawl(string matchString, CrawlMatchRule matchRule, CrawlMatchType matchType, FMBoardType boardType = FMBoardType.전체, int page = 1)
+        public void RegisterFMCrawl(string taskName, string matchString, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, FMBoardType boardType = FMBoardType.전체, int page = 1)
         {
             AbstractCrawl crawl = new FMKoreaCrawl(boardType, page);
-            CrawlTask crawlTask = new CrawlTask(crawl, matchString, matchRule, matchType, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchString, stringMatchRule, matchType, matchingRangeMinute, this);
             
             lock (this)
                 _crawlList.Add(crawlTask);
@@ -344,10 +366,10 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        public void RegisterFMSearchCrawl(string matchString, CrawlMatchRule matchRule, CrawlMatchType matchType, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
+        public void RegisterFMSearchCrawl(string taskName, string matchString, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
         {
             AbstractCrawl crawl = new FMKoreaCrawl(searchOption, searchContent, boardType, page);
-            CrawlTask crawlTask = new CrawlTask(crawl, matchString, matchRule, matchType, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchString, stringMatchRule, matchType, matchingRangeMinute, this);
 
             lock (this) 
                 _crawlList.Add(crawlTask);
@@ -375,6 +397,9 @@ namespace RequestApi.Crawl
 
             lock (this)
             {
+                // 기간이 지난 이미 매칭되었던 결과물들은 주기적으로 정리해주자.
+                _completedResults.RemoveAll(result => DateTime.Now - result.MatchedTime >= ExpiredDuration);
+
                 foreach (var crawlTask in _crawlList)
                     _taskWorkers[crawlTask.CrawlType].Add(crawlTask);
             }
@@ -383,9 +408,41 @@ namespace RequestApi.Crawl
                 worker.Waitor.Set();
 
             WaitHandle.WaitAll(_taskSignals);
-            Debug.WriteLine($"Tick Complete");
+            Debug.WriteLine("Tick Complete");
         }
 
 
+
+        public class Statistics
+        {
+            public long RequestCount
+            {
+                get => Interlocked.Read(ref _requestCount);
+                set => Interlocked.Add(ref _requestCount, value);
+            }
+
+            public long RequestFailedCount
+            {
+                get => Interlocked.Read(ref _requestFailedCount);
+                set => Interlocked.Add(ref _requestFailedCount, value);
+            }
+
+            public long RequestSuccessCount
+            {
+                get => Interlocked.Read(ref _requestSuccessCount);
+                set => Interlocked.Add(ref _requestSuccessCount, value);
+            }
+
+            public long RequestMatchedCount
+            {
+                get => Interlocked.Read(ref _requestMatchedCount);
+                set => Interlocked.Add(ref _requestMatchedCount, value);
+            }
+
+            private long _requestCount = 0;
+            private long _requestFailedCount = 0;
+            private long _requestSuccessCount = 0;
+            private long _requestMatchedCount = 0;
+        }
     }
 }
