@@ -1,4 +1,9 @@
-﻿// DC 인사이드 미국 주식 크롤링
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ * DC 인사이드 미국 주식 크롤링
+ * * * * * * * * * * * * * * 
+ */
 
 using RequestApi.Crawl.Result;
 using System;
@@ -94,6 +99,11 @@ namespace RequestApi.Crawl
             }
 
             return results;
+        }
+
+        public override AbstractCrawl Clone()
+        {
+            return new DCInsideCrawl(BoardType, Page);
         }
     }
 }

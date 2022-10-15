@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WindowsApp"
         mc:Ignorable="d"
-        Height="770" Width="350" Closed="MainWindow_OnClosed" WindowStyle="None" FontSize="16" MouseDown="MainWindow_OnMouseDown" Loaded="MainWindow_OnLoaded">
+        Height="770" Width="350" Closed="MainWindow_OnClosed" WindowStyle="None" FontSize="16" MouseDown="MainWindow_OnMouseDown" Loaded="MainWindow_OnLoaded" ResizeMode="NoResize">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"></RowDefinition>
@@ -18,20 +18,24 @@
         <!-- 0 -->
         <Grid Grid.Row ="0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="30"></ColumnDefinition>
                 <ColumnDefinition Width="*"></ColumnDefinition>
                 <ColumnDefinition Width="40"></ColumnDefinition>
             </Grid.ColumnDefinitions>
 
             <!-- 0 -->
-            <TextBlock Name="_tblStatusBar"
-                       Text="상태 표시줄" 
+            <Rectangle Name="_recStatusBar" Fill="PaleVioletRed" Margin="5, 5, 5, 5"></Rectangle>
+
+            <!-- 1 -->
+            <TextBlock Grid.Column="1"
+                       Name="_tblStatusBar"
+                       Text="정지 상태" 
                        HorizontalAlignment="Left"
                        VerticalAlignment="Center"/>
 
             <!-- 1 -->
-            <Button Grid.Column="1" Click="ButtonBase_OnClick" VerticalAlignment="Stretch">
-                <Image Source="pack://application:,,,/Resources/Icons/icons8-close-144.png">
-                </Image>
+            <Button Grid.Column="2" Click="ButtonBase_OnClick" VerticalAlignment="Stretch">
+                <Image Source="pack://application:,,,/Resources/Icons/close_144.png"/>
             </Button>
         </Grid>
 
@@ -43,8 +47,8 @@
                 <DataTemplate>
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="75"></ColumnDefinition>
                             <ColumnDefinition Width="100"></ColumnDefinition>
-                            <ColumnDefinition Width="40"></ColumnDefinition>
                             <ColumnDefinition Width="*"></ColumnDefinition>
                         </Grid.ColumnDefinitions>
 
@@ -92,11 +96,13 @@
                         SelectionChanged="TabControl_OnSelectionChanged">
 
                 <TabItem Header="디시인사이드"
+                         Name="_tbiDCCrawl"
                          IsSelected="True">
                     <StackPanel Height="230">
                         <TextBlock Text="요청 목록"></TextBlock>
                         <ListView Name="_livDCCrawlList"
-                                  MouseDoubleClick="_livDCCrawlList_OnMouseDoubleClick"
+                                  MouseDoubleClick="CrawlList_OnMouseDoubleClick"
+                                  SelectionChanged="CrawlList_OnSelectionChanged"
                                   Height="150"/>
 
                         <!-- 크롤링 기능 -->
@@ -142,10 +148,13 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="에펨코리아">
+                <TabItem Header="에펨코리아"
+                         Name="_tbiFMCrawl">
                     <StackPanel Height="290">
                         <TextBlock Text="요청 목록"></TextBlock>
                         <ListView Name="_livFMCrawlList"
+                                  SelectionChanged="CrawlList_OnSelectionChanged"
+                                  MouseDoubleClick="CrawlList_OnMouseDoubleClick"
                                   Height="150"></ListView>
 
                         <!-- 크롤링 기능 -->
@@ -253,7 +262,8 @@
                     </StackPanel>
                 </TabItem>
 
-                <TabItem Header="프로그램 설정">
+                <TabItem Header="프로그램 설정"
+                         Name="_tbiSetting">
                     <!-- 기능 없음-->
                     <TextBlock HorizontalAlignment="Center">아직 기능 없음</TextBlock>
                 </TabItem>
@@ -261,11 +271,12 @@
             </TabControl>
 
             <!-- 크롤링 기능 -->
-            <Grid Height="90"
+            <Grid Height="120"
                   Name="_gridCommonTaskOption"
                   DockPanel.Dock="Top"
                   Margin="3, 0, 0, 0">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="*"></RowDefinition>
@@ -316,7 +327,18 @@
                            HorizontalAlignment="Center" />
                 <TextBox Grid.Row="2"
                          Grid.Column="1" 
-                         Name="_tbMatchString"/>
+                         Name="_tbCrawlMatchString"/>
+
+                <TextBlock Grid.Row="3"
+                           Grid.Column="0"
+                           Text="작업 이름"
+                           MouseEnter="TextBlock_OnMouseEnter"
+                           MouseLeave="TextBlock_OnMouseLeave"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+                <TextBox Grid.Row="3"
+                         Grid.Column="1"
+                         Name="_tbCrawlTaskName" />
             </Grid>
 
             <Rectangle Fill="Black"
@@ -335,15 +357,18 @@
                 <Button Name="_btnCrawlRemove"
                         Grid.Column="0"
                         IsEnabled="False"
-                        Content="선택 제거" />
+                        Content="선택 제거"
+                        Click="_btnCrawlRemove_Click" />
                 <Button Name="_btnCrawlModify"
                         Grid.Column="1"
                         IsEnabled="False"
-                        Content="선택 수정" />
+                        Content="선택 수정"
+                        Click="_btnCrawlModify_Click" />
                 <Button Name="_btnCrawlAdd"
                         Grid.Column="2"
                         IsEnabled="False"
-                        Content="추가" />
+                        Content="추가"
+                        Click="_btnCrawlAdd_Click" />
             </Grid>
         </DockPanel>
     </Grid>

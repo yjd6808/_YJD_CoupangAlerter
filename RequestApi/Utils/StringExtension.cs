@@ -1,4 +1,9 @@
-﻿using System;
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * * 
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 

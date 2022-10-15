@@ -1,4 +1,7 @@
-﻿// 
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ */
 
 using System;
 using System.Collections.Generic;

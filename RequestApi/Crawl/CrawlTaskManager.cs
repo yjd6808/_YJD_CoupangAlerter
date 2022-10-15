@@ -1,4 +1,9 @@
-﻿using System;
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -9,30 +14,39 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RequestApi.Crawl.Result;
+using RequestApi.Utils;
 
 #pragma warning disable 0168        // local variable not used
 
 namespace RequestApi.Crawl
 {
+    public delegate void CrawlRequest(CrawlTask task);
     public delegate void CrawlFailed(CrawlTask task);
     public delegate void CrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlResult);
     public delegate void CrawlMatched(CrawlTask crawl, MatchedCrawlResult matchedResult);
 
     public class CrawlTaskManager
     {
-        public bool Running { get; private set; }
+        public bool Running => _running;
         public bool HasTask
         {
             get
             {
                 lock (this)
                 {
-                    return _crawlList.Count > 0;
+                    int runnableTaskCount = 0;
+                    foreach (var crawlTask in _crawlList)
+                    {
+                        if (_blockedCrawl[crawlTask.CrawlType]) continue;
+                        runnableTaskCount++;
+                    }
+                    return runnableTaskCount > 0;
                 }
             }
         }
 
-        public int[] CrawlDelay { get; }
+        public int[] CrawlDelay => _crawlDelay;
+        public bool[] BlockedCrawl => _blockedCrawl;
         public Statistics Stat { get; }
 
 
@@ -42,16 +56,20 @@ namespace RequestApi.Crawl
         public static TimeSpan ExpiredDuration => new TimeSpan(1, 0, 0, 0);
 
 
-        private List<CrawlTask> _crawlList;
-        private List<MatchedCrawlResult> _completedResults;     // 매칭된 게시글 결과들. (매칭 될 때마다 기록을 해서 중복 검출이 되지 않도록 막아준다.)
+        private Thread _workerThread;
 
-        private int _delay;
-        private Timer _workerTimer;
-        private CrawlTaskWorker[] _taskWorkers;
-        private AutoResetEvent[] _taskSignals;      
-        private AutoResetEvent[] _taskWaitors;
+        private readonly List<CrawlTask> _crawlList;
+        private readonly List<MatchedCrawlResult> _completedResults;     // 매칭된 게시글 결과들. (매칭 될 때마다 기록을 해서 중복 검출이 되지 않도록 막아준다.)
 
+        private readonly CrawlTaskWorker[] _taskWorkers;
+        private readonly AutoResetEvent[] _taskSignals;      
+        private readonly AutoResetEvent[] _taskWaitors;
 
+        private volatile bool _running;
+        private volatile int[] _crawlDelay;
+        private volatile bool[] _blockedCrawl;
+
+        public CrawlRequest OnCrawlRequest;
         public CrawlFailed OnCrawlFailed;
         public CrawlSuccess OnCrawlSuccess;
         public CrawlMatched OnCrawlMatched;
@@ -60,15 +78,19 @@ namespace RequestApi.Crawl
         private static readonly string s_taskFileName = "tasks.json";             // 현재 진행중인 작업 저장용
         private static readonly string s_completeFileName = "today.json";         // 중복 검출 방지를 위한 목록 (저장 기간 1일)
 
-        public CrawlTaskManager(int delay)
+        public CrawlTaskManager()
         {
-            Running = false;
-            CrawlDelay = new int[CrawlType.Max];
-            CrawlDelay[CrawlType.FMKorea] = 100;
-            CrawlDelay[CrawlType.DCInside] = 100;
             Stat = new Statistics();
 
-            _delay = delay;
+            _running = false;
+
+            _blockedCrawl = new bool[CrawlType.Max];
+            _blockedCrawl[CrawlType.FMKorea] = true;
+            _blockedCrawl[CrawlType.DCInside] = false;
+
+            _crawlDelay = new int[CrawlType.Max];
+            _crawlDelay[CrawlType.FMKorea] = 200;
+            _crawlDelay[CrawlType.DCInside] = 200;
             _crawlList = new List<CrawlTask>();
             _completedResults = new List<MatchedCrawlResult>();
 
@@ -76,6 +98,7 @@ namespace RequestApi.Crawl
             _taskSignals = new AutoResetEvent[CrawlType.Max];
             _taskSignals[CrawlType.FMKorea] = new AutoResetEvent(false);
             _taskSignals[CrawlType.DCInside] = new AutoResetEvent(false);
+           
 
             _taskWaitors = new AutoResetEvent[CrawlType.Max];
             _taskWaitors[CrawlType.FMKorea] = new AutoResetEvent(false);
@@ -84,20 +107,21 @@ namespace RequestApi.Crawl
             _taskWorkers[CrawlType.FMKorea] = new CrawlTaskWorker(
                 CrawlDelay[CrawlType.FMKorea],
                 _taskWaitors[CrawlType.FMKorea],
-                _taskSignals[CrawlType.FMKorea],
+                _taskSignals[CrawlType.FMKorea] as AutoResetEvent,
                 CrawlType.FMKorea
             );
 
             _taskWorkers[CrawlType.DCInside] = new CrawlTaskWorker(
                 CrawlDelay[CrawlType.DCInside],
                 _taskWaitors[CrawlType.DCInside],
-                _taskSignals[CrawlType.DCInside],
+                _taskSignals[CrawlType.DCInside] as AutoResetEvent, 
                 CrawlType.DCInside
             );
 
             OnCrawlMatched += (crawl, result) =>
             {
-                lock (this) _completedResults.Add(result);
+                lock (this)
+                    _completedResults.Add(result);
             };
         }
 
@@ -107,11 +131,15 @@ namespace RequestApi.Crawl
                 return;
 
             for (int i = 0; i < CrawlType.Max; i++)
+            {
+                _taskWaitors[i].Reset();
+                _taskSignals[i].Reset();
                 _taskWorkers[i].Start();
+            }
 
-            Running = true;
-            _workerTimer = new Timer(OnTick, this, 0, _delay);
-            
+            _running = true;
+            _workerThread = new Thread(WorkerThread);
+            _workerThread.Start();
         }
 
         public void Stop()
@@ -119,17 +147,35 @@ namespace RequestApi.Crawl
             if (!Running)
                 return;
 
+            _running = false;
+
             for (int i = 0; i < CrawlType.Max; i++)
                 _taskWorkers[i].Stop();
 
-            Running = false;
-            _workerTimer?.Dispose();
+            /*
+
+            _running = false; // ---> 잘못된 코드
+             
+            _running = false는 무조건 맨 위에서 실행해줘야한다. 이렇게 안해주면 데드락 걸림
+            _taskWorker로 Stop을 호춣해주면 _taskWorker의 쓰레드들이 현재 진행중인 작업이 완료되면 종료된다.
+            이때 Manager의 워커쓰레드의 WaitHandle.WaitAll() 함수로 블록된 쓰레드도 동시에 깨어나는데
+            만약 _running = false를 _taskWorker[i].Stop() 반복문 구문 이후에 처리해주게 되면 WaitAll() 함수 이후에도 _running의 상태가 
+            true일 수도 있고 false일 수도 있는 불확실한 상태가 되기 때문이다.
+
+            */
+
+            _workerThread.Join();
+            _workerThread = null;
+
+            SaveCompleteFile();
         }
 
         public bool TryLoadCompleteFile()
         {
             if (Running)
                 return false;
+
+            _completedResults.Clear();
 
             try
             {
@@ -151,7 +197,7 @@ namespace RequestApi.Crawl
                     string title = match["title"].ToString();
                     string name = match["name"].ToString();
                     DateTime writeDate = DateTime.Parse(match["writeDate"].ToString());
-                    long viewCount = long.Parse(match["VviewCount"].ToString());
+                    long viewCount = long.Parse(match["viewCount"].ToString());
                     long recommendCount = long.Parse(match["recommendCount"].ToString());
 
                     CrawlResult crawlResult = new CrawlResult(postId, url, title, name, writeDate, viewCount, recommendCount, crawlType);
@@ -175,6 +221,8 @@ namespace RequestApi.Crawl
         {
             if (Running)
                 return false;
+
+            _crawlList.Clear();
 
             try
             {
@@ -265,8 +313,9 @@ namespace RequestApi.Crawl
                     crawlObj.Add("uid", crawlTask.UID);
                     crawlObj.Add("taskName", crawlTask.TaskName);
                     crawlObj.Add("crawlType", crawlTask.CrawlType);
-                    crawlObj.Add("matchString", crawlTask.MatchString);
+                    crawlObj.Add("matchString", crawlTask.MatchContent);
                     crawlObj.Add("stringMatchRule", (int)crawlTask.StringMatchRule);
+                    crawlObj.Add("matchingRangeMinute", crawlTask.MatchingRangeMinute);
                     crawlObj.Add("matchType", (int)crawlTask.MatchType);
 
                     switch (crawlTask.CrawlType)
@@ -344,10 +393,10 @@ namespace RequestApi.Crawl
 
         
         // 빌더 패턴 고려할 것
-        public void RegisterDCCrawl(string taskName, string matchString, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        public void RegisterDCCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, DCBoardType boardType = DCBoardType.전체글, int page = 1)
         {
             AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchString, stringMatchRule, matchType, matchingRangeMinute, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
             
             lock (this)
                 _crawlList.Add(crawlTask);
@@ -355,26 +404,55 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        public void RegisterFMCrawl(string taskName, string matchString, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, FMBoardType boardType = FMBoardType.전체, int page = 1)
-        {
-            AbstractCrawl crawl = new FMKoreaCrawl(boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchString, stringMatchRule, matchType, matchingRangeMinute, this);
-            
-            lock (this)
-                _crawlList.Add(crawlTask);
-
-            SaveTaskFile();
-        }
-
-        public void RegisterFMSearchCrawl(string taskName, string matchString, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
+        public void RegisterFMCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
         {
             AbstractCrawl crawl = new FMKoreaCrawl(searchOption, searchContent, boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchString, stringMatchRule, matchType, matchingRangeMinute, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
 
             lock (this) 
                 _crawlList.Add(crawlTask);
             SaveTaskFile();
         }
+
+        // 수정하고자하는 CrawlTask의 내용을 변경하는 행위 자체가 CrawlTask에서의 락 기능 구현을 강제해버리기 때문에 Idle 상태에서의 큰 성능저하가 발생한다.
+        // 따라서 수정하고자하는 CrawlTask의 위치를 찾아낸 후 새로 생성 해서 동일한 위치에 삽입해주는 방식으로 구현하도록 한다.
+        public void ModifyDCCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        {
+            AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
+
+            
+            lock (this)
+            {
+                int findIdx = _crawlList.FindIndex(0, _crawlList.Count, (x) => x == modifyTask);
+                if (findIdx == -1) throw new Exception("수정하고자하는 작업을 찾지 못했습니다.");
+
+                modifyTask.Block();     // 작업 수행이 안되도록 막아준다.                
+                _crawlList.RemoveAt(findIdx);
+                _crawlList.Insert(findIdx, crawlTask);
+            }
+                
+            SaveTaskFile();
+        }
+
+        public void ModifyFMCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
+        {
+            AbstractCrawl crawl = new FMKoreaCrawl(searchOption, searchContent, boardType, page);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
+
+            lock (this)
+            {
+                int findIdx = _crawlList.FindIndex(0, _crawlList.Count, (x) => x == modifyTask);
+                if (findIdx == -1) throw new Exception("수정하고자하는 작업을 찾지 못했습니다.");
+
+                modifyTask.Block();     // 작업 수행이 안되도록 막아준다.                
+                _crawlList.RemoveAt(findIdx);
+                _crawlList.Insert(findIdx, crawlTask);
+            }
+
+            SaveTaskFile();
+        }
+
 
         public void Unregister(CrawlTask crawl)
         {
@@ -391,58 +469,68 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        private void OnTick(object state)
+        private void WorkerThread(object state)
         {
-            Debug.WriteLine($"Tick Begin");
-
-            lock (this)
+            while (_running)
             {
-                // 기간이 지난 이미 매칭되었던 결과물들은 주기적으로 정리해주자.
-                _completedResults.RemoveAll(result => DateTime.Now - result.MatchedTime >= ExpiredDuration);
+                lock (this)
+                {
+                    // 기간이 지난 이미 매칭되었던 결과물들은 주기적으로 정리해주자.
+                    _completedResults.RemoveAll(result => DateTime.Now - result.MatchedTime >= ExpiredDuration);
 
-                foreach (var crawlTask in _crawlList)
-                    _taskWorkers[crawlTask.CrawlType].Add(crawlTask);
+                    foreach (var crawlTask in _crawlList)
+                    {
+                        if (_blockedCrawl[crawlTask.CrawlType]) continue;
+                        _taskWorkers[crawlTask.CrawlType].Add(crawlTask);
+                    }
+                }
+
+                foreach (var worker in _taskWorkers)
+                    worker.Waitor.Set();
+
+                WaitHandle.WaitAll(_taskSignals);
             }
-
-            foreach (var worker in _taskWorkers)
-                worker.Waitor.Set();
-
-            WaitHandle.WaitAll(_taskSignals);
-            Debug.WriteLine("Tick Complete");
         }
 
-
+        public bool CheckAlreadyMatchedResult(CrawlResult result)
+        {
+            lock (this)
+            {
+                return _completedResults.Find(x => x.Result.Equals(result)) != null;
+            }
+        }
 
         public class Statistics
         {
             public long RequestCount
             {
                 get => Interlocked.Read(ref _requestCount);
-                set => Interlocked.Add(ref _requestCount, value);
+                set => Interlocked.Exchange(ref _requestCount, value);
             }
 
             public long RequestFailedCount
             {
                 get => Interlocked.Read(ref _requestFailedCount);
-                set => Interlocked.Add(ref _requestFailedCount, value);
+                set => Interlocked.Exchange(ref _requestFailedCount, value);
             }
 
             public long RequestSuccessCount
             {
                 get => Interlocked.Read(ref _requestSuccessCount);
-                set => Interlocked.Add(ref _requestSuccessCount, value);
+                set => Interlocked.Exchange(ref _requestSuccessCount, value);
             }
 
             public long RequestMatchedCount
             {
                 get => Interlocked.Read(ref _requestMatchedCount);
-                set => Interlocked.Add(ref _requestMatchedCount, value);
+                set => Interlocked.Exchange(ref _requestMatchedCount, value);
             }
 
-            private long _requestCount = 0;
-            private long _requestFailedCount = 0;
-            private long _requestSuccessCount = 0;
-            private long _requestMatchedCount = 0;
+
+            private long _requestCount = 0L;
+            private long _requestFailedCount = 0L;
+            private long _requestSuccessCount = 0L;
+            private long _requestMatchedCount = 0L;
         }
     }
 }

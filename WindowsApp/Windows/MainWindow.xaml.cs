@@ -1,8 +1,14 @@
-﻿using System;
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Media;
+using System.Speech.Synthesis;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -32,32 +38,81 @@ namespace WindowsApp.Windows
         public string Content { get; set; }
         public Brush ContentForeground { get; set; }
         public TextDecorationCollection ContentDecoration { get; set; }
-
         public string Url { get; set; }
-        
     }
 
 
     public partial class MainWindow : Window
     {
-        private CrawlTaskManager _crawlTaskManager = new CrawlTaskManager(5000);
+        private CrawlTaskManager _crawlTaskManager = new CrawlTaskManager();
         private bool _windowLoaded = false;
         private Brush _disabledForegroundColor = new SolidColorBrush(Color.FromRgb(126, 126, 126));
+        private bool[] _selectedTabItem = new bool[CrawlType.Max + 1];
+        private CrawlTask? _selectedCrawlTask;
+        private SpeechSynthesizer _speechSynthesizer = new SpeechSynthesizer();
+        private volatile bool _speeching = false;
 
 
         public MainWindow()
         {
+            _crawlTaskManager.TryLoadTaskFile();
+            _crawlTaskManager.TryLoadCompleteFile();
+            _crawlTaskManager.OnCrawlRequest += OnCrawlRequest;
+            _crawlTaskManager.OnCrawlSuccess += OnCrawlSuccess;
+            _crawlTaskManager.OnCrawlFailed += OnCrawlFailed;
+            _crawlTaskManager.OnCrawlMatched += OnCrawlMatched;
+
+            _speechSynthesizer.SetOutputToDefaultAudioDevice();
+
             InitializeComponent();
             InitializeDefaultUIStates();
-            
-            _crawlTaskManager.RegisterFMCrawl("안뇽", "ㅇㅇ", CrawlStringMatchRule.Contain, CrawlMatchType.NickName, 30, FMBoardType.전체, 1);
-            _crawlTaskManager.OnCrawlSuccess += (crawl, result) => Debug.WriteLine($"{result.Count} 작업완료");
+        }
+
+        private void OnCrawlRequest(CrawlTask task)
+        {
+            UpdateStatusBar();
+        }
+
+        private void OnCrawlMatched(CrawlTask crawl, MatchedCrawlResult matchedresult)
+        {
+            UpdateStatusBar();
+            AddCrawlMatchedLog(matchedresult);
+
+            if (_speeching)
+                return;
+
+            Task.Run(() =>
+            {
+                _speeching = true;
+                _speechSynthesizer.Speak("found matched result! check out result");
+            }).ContinueWith(x => _speeching = false);
+        }
+
+        private void OnCrawlFailed(CrawlTask task)
+        {
+            UpdateStatusBar();
+        }
+
+        private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
+        {
+            UpdateStatusBar();
+        }
+
+        private void UpdateStatusBar()
+        {
+            Dispatcher.BeginInvoke(() => _tblStatusBar.Text = 
+                $"요청: {_crawlTaskManager.Stat.RequestCount} " +
+                $"성공: {_crawlTaskManager.Stat.RequestSuccessCount} " +
+                $"실패: {_crawlTaskManager.Stat.RequestFailedCount} " +
+                $"매칭: {_crawlTaskManager.Stat.RequestMatchedCount}");
         }
 
         private void InitializeDefaultUIStates()
         {
             _chkbFMCrawlSearchOptionEnable_OnUnchecked(null, null);
             _chkbFMCrawlSearchContentEnable_OnUnchecked(null, null);
+            SelectDCCrawlTabItem();
+
             _btnStopCrawling.IsEnabled = false;
             _btnStopCrawling.Foreground = _disabledForegroundColor;
         }
@@ -82,12 +137,14 @@ namespace WindowsApp.Windows
         private void TextBlock_OnMouseEnter(object sender, MouseEventArgs e)
         {
             if (sender is not TextBlock tb) return;
+            if (tb.IsEnabled == false) return;
             tb.TextDecorations = TextDecorations.Underline;
         }
 
         private void TextBlock_OnMouseLeave(object sender, MouseEventArgs e)
         {
             if (sender is not TextBlock tb) return;
+            if (tb.IsEnabled == false) return;
             tb.TextDecorations = null;
         }
 
@@ -99,7 +156,8 @@ namespace WindowsApp.Windows
         private void _livLog_ItemClick(object sender, RoutedEventArgs e)
         {
             Log? log = (sender as Button)?.DataContext as Log;
-            if (log == null) return;
+            if (log == null || string.IsNullOrWhiteSpace(log.Url)) return;
+            Process.Start(log.Url);
         }
 
 
@@ -128,46 +186,119 @@ namespace WindowsApp.Windows
             _gridCommonTaskOption.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
 
             if (visible)
-                _gridCommonTaskOption.Height = 90;
+                _gridCommonTaskOption.Height = 120;
             else
                 _gridCommonTaskOption.Height = 0;
         }
+
+        private void SetEnableTaskManipulationUIElements(bool enable)
+        {
+            _btnCrawlRemove.IsEnabled = enable;
+            _btnCrawlModify.IsEnabled = enable;
+
+            if (enable)
+            {
+                _btnCrawlRemove.Foreground = Brushes.Black;
+                _btnCrawlModify.Foreground = Brushes.Black;
+            }
+            else
+            {
+                _btnCrawlRemove.Foreground = _disabledForegroundColor;
+                _btnCrawlModify.Foreground = _disabledForegroundColor;
+            }
+
+        }
+
 
 
         private void TabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_windowLoaded) return;
 
-            switch (_tbcCrawl.SelectedIndex)
-            {
-                case CrawlType.DCInside:
-                    SetVisibilityManipulationUIContainer(true);
-                    SetVisibilityCommonTaskOptionUIContainer(true);
-                    UpdateCrawlTaskList(CrawlType.DCInside);
-                    break;
-                case CrawlType.FMKorea:
-                    SetVisibilityManipulationUIContainer(true);
-                    SetVisibilityCommonTaskOptionUIContainer(true);
-                    UpdateCrawlTaskList(CrawlType.FMKorea);
-                    break;
-                default:
-                    SetVisibilityManipulationUIContainer(false);
-                    SetVisibilityCommonTaskOptionUIContainer(false);
-                    break;
-            }
+            // 탭컨트롤 내부 엘리먼트 클릭을 해도 여기 들어옴 ㄷㄷ..
+            // 그래서 이전 탭컨트롤 상태값을 관리하는 _tabItemSelected를 추가해줌.
 
+            if (!_selectedTabItem[CrawlType.DCInside] && _tbiDCCrawl.IsSelected)
+                SelectDCCrawlTabItem();
+            else if (!_selectedTabItem[CrawlType.FMKorea] && _tbiFMCrawl.IsSelected)
+                SelectFMCrawlTabItem();
+            else if (!_selectedTabItem[CrawlType.Max] && _tbiSetting.IsSelected)
+                SelectSettingTabItem();
         }
 
-        private void UpdateCrawlTaskList(int crawlType)
+     
+
+        
+
+        private void SelectDCCrawlTabItem()
         {
-            _livDCCrawlList.Items.Clear();
+            SetEnableTaskManipulationUIElements(false);
+            SetVisibilityManipulationUIContainer(true);
+            SetVisibilityCommonTaskOptionUIContainer(true);
+
+            _selectedTabItem[CrawlType.DCInside] = true;
+            _selectedTabItem[CrawlType.FMKorea] = false;
+            _selectedTabItem[CrawlType.Max] = false;
+            _btnCrawlAdd.IsEnabled = true;
+            _btnCrawlAdd.Foreground = Brushes.Black;
+            _selectedCrawlTask = null;
+
+            UpdateCrawlTaskList();
+        }
+
+        private void SelectSettingTabItem()
+        {
+            SetEnableTaskManipulationUIElements(false);
+            SetVisibilityManipulationUIContainer(false);
+            SetVisibilityCommonTaskOptionUIContainer(false);
+            _selectedTabItem[CrawlType.DCInside] = false;
+            _selectedTabItem[CrawlType.FMKorea] = false;
+            _selectedTabItem[CrawlType.Max] = true;
+            _btnCrawlAdd.IsEnabled = false;
+            _btnCrawlAdd.Foreground = _disabledForegroundColor;
+            _selectedCrawlTask = null;
+        }
+
+        private void SelectFMCrawlTabItem()
+        {
+            SetEnableTaskManipulationUIElements(false);
+            SetVisibilityManipulationUIContainer(true);
+            SetVisibilityCommonTaskOptionUIContainer(true);
+
+            _selectedTabItem[CrawlType.DCInside] = false;
+            _selectedTabItem[CrawlType.FMKorea] = true;
+            _selectedTabItem[CrawlType.Max] = false;
+            _btnCrawlAdd.IsEnabled = true;
+            _btnCrawlAdd.Foreground = Brushes.Black;
+            _selectedCrawlTask = null;
+
+            UpdateCrawlTaskList();
+
+        }
+        private void UpdateCrawlTaskList()
+        {
+            int selectedCralType = -1;
+
+            if (_selectedTabItem[CrawlType.FMKorea]) selectedCralType = CrawlType.FMKorea;
+            else if (_selectedTabItem[CrawlType.DCInside]) selectedCralType = CrawlType.DCInside;
+            else return;
+
+            ListView? liv = null;
+
+            switch (selectedCralType)
+            {
+                case CrawlType.DCInside: liv = _livDCCrawlList; break;
+                case CrawlType.FMKorea: liv = _livFMCrawlList; break;
+            }
+
+            liv.Items.Clear();
             _crawlTaskManager.ForEach(task =>
             {
-                if (task.CrawlType != crawlType)
+                if (task.CrawlType != selectedCralType)
                     return;
 
                 Dispatcher.Invoke(() =>
-                    _livDCCrawlList.Items.Add(new ListViewItem {
+                    liv.Items.Add(new ListViewItem {
                         DataContext = task,
                         Content = task.TaskName
                     })
@@ -209,10 +340,7 @@ namespace WindowsApp.Windows
             _tbFMCrawlSearchContent.Text = "비활성화 됨";
         }
 
-        private void _livDCCrawlList_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-
-        }
+     
 
         private void _btnStartCrawling_OnClick(object sender, RoutedEventArgs e)
         {
@@ -220,45 +348,211 @@ namespace WindowsApp.Windows
             _btnStartCrawling.IsEnabled = false;
             _btnStartCrawling.Foreground = _disabledForegroundColor;
             _btnStopCrawling.IsEnabled = true;
-            _btnStartCrawling.Foreground = Brushes.Black;
+            _btnStopCrawling.Foreground = Brushes.Black;
+
+            _recStatusBar.Fill = Brushes.LawnGreen;
+
+            if (!_crawlTaskManager.HasTask)
+                _tblStatusBar.Text = "작업을 등록해주세요.";
+            else
+                _tblStatusBar.Text = "크롤링 시작 준비중";
 
             AddNoticeLog("크롤링 시작");
         }
 
         private void _btnStopCrawling_OnClick(object sender, RoutedEventArgs e)
         {
-            _crawlTaskManager.Start();
+            _crawlTaskManager.Stop();
             _btnStartCrawling.IsEnabled = true;
             _btnStartCrawling.Foreground = Brushes.Black;
             _btnStopCrawling.IsEnabled = false;
             _btnStopCrawling.Foreground = _disabledForegroundColor;
-
+            _recStatusBar.Fill = Brushes.PaleVioletRed;
+            _tblStatusBar.Text = "정지 상태";
             AddNoticeLog("크롤링 중지");
         }
 
         private void AddNoticeLog(string content, string url = "")
         {
-            _livLog.Items.Add(new Log()
+            var log = new Log
             {
                 Time = DateTime.Now.ToString("HH:mm:ss"),
                 Name = "[공지]",
                 NameForeground = Brushes.Black,
                 Content = content,
                 ContentForeground = Brushes.Black
+            };
+
+            _livLog.Items.Add(log);
+            _livLog.ScrollIntoView(log);
+        }
+
+        private void AddCrawlMatchedLog(MatchedCrawlResult matched)
+        {
+            var log = new Log
+            {
+                Time = DateTime.Now.ToString("HH:mm:ss"),
+                Name = matched.Result.Name,
+                NameForeground = Brushes.Chartreuse,
+                Content = matched.Result.Title,
+                ContentForeground = Brushes.DodgerBlue,
+                ContentDecoration = TextDecorations.Underline,
+                Url = matched.Result.Url
+            };
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                _livLog.Items.Add(log);
+                _livLog.ScrollIntoView(log);
             });
         }
 
-        private void AddCrawlMatchedLog(string name, string content, string url)
+
+        private void CrawlList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _livLog.Items.Add(new Log()
+            var liv = sender as ListView;
+            var item = liv?.SelectedItem as ListViewItem;
+            var task = item?.DataContext as CrawlTask;
+
+            if (task == null)
+                return;
+
+            _selectedCrawlTask = task;
+            SetEnableTaskManipulationUIElements(true);
+        }
+
+        private void CrawlList_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (_selectedCrawlTask == null)
+                return;
+
+            UpdateCrawlTaskCommonUI(_selectedCrawlTask);
+
+            if (_selectedCrawlTask.CrawlType == CrawlType.DCInside)
+                UpdateDCCrawlTaskUI(_selectedCrawlTask);
+            else if (_selectedCrawlTask.CrawlType == CrawlType.FMKorea)
+                UpdateFMCrawlTaskUI(_selectedCrawlTask);
+        }
+
+        private void UpdateDCCrawlTaskUI(CrawlTask task)
+        {
+            var dcCrawl = task.Crawl.To<DCInsideCrawl>();
+            if (dcCrawl == null) throw new Exception("말도 안 돼!");
+            _cbDCCrawlCategory.SelectedIndex = (int)dcCrawl.BoardType;
+            _tbDCCrawlPage.Text = dcCrawl.Page.ToString();
+        }
+
+        private void UpdateFMCrawlTaskUI(CrawlTask task)
+        {
+            var fmCrawl = task.Crawl.To<FMKoreaCrawl>();
+            if (fmCrawl == null) throw new Exception("말도 안 돼!");
+            _cbFMCrawlCategory.SelectedIndex = (int)fmCrawl.BoardType;
+            _tbFMCrawlPage.Text = fmCrawl.Page.ToString();
+            _cbFMCrawlSearchOption.SelectedIndex = (int)fmCrawl.SearchOption;
+            _tbFMCrawlSearchContent.Text = fmCrawl.SearchContent;
+        }
+
+        private void UpdateCrawlTaskCommonUI(CrawlTask task)
+        {
+            if (task == null) throw new Exception("말도 안 돼!");
+            _cbCrawlMatchType.SelectedIndex = (int)task.MatchType;
+            _cbCrawlStringMatchRule.SelectedIndex = (int)task.StringMatchRule;
+            _tbCrawlMatchString.Text = task.MatchContent;
+            _tbCrawlTaskName.Text = task.TaskName;
+        }
+
+        private void _btnCrawlAdd_Click(object sender, RoutedEventArgs e)
+        {
+            AddOrModifyTask(null);
+        }
+
+        private void AddOrModifyTask(CrawlTask? modifyTask)
+        {
+            if (_cbCrawlMatchType.SelectedIndex == -1)
             {
-                Time = DateTime.Now.ToString("HH:mm:ss"),
-                Name = name,
-                NameForeground = Brushes.Chartreuse,
-                Content = content,
-                ContentForeground = Brushes.DodgerBlue,
-                ContentDecoration = TextDecorations.Underline
-            });
+                MsgBox.ShowTopMost("매칭 타입을 선택해주세요.");
+                return;
+            }
+
+            if (_cbCrawlStringMatchRule.SelectedIndex == -1)
+            {
+                MsgBox.ShowTopMost("문자열 체크 방식을 선택해주세요.");
+                return;
+            }
+
+            CrawlMatchType matchType = (CrawlMatchType)_cbCrawlMatchType.SelectedIndex;
+            CrawlStringMatchRule stringMatchRule = (CrawlStringMatchRule)_cbCrawlStringMatchRule.SelectedIndex;
+            string matchContent = _tbCrawlMatchString.Text.Trim();
+            string taskName = _tbCrawlTaskName.Text.Trim();
+
+            if (matchContent.Length == 0)
+            {
+                MsgBox.ShowTopMost("매칭 내용을 입력해주세요.");
+                return;
+            }
+
+            if (taskName.Length == 0)
+            {
+                MsgBox.ShowTopMost("작업 이름을 입력해주세요.");
+                return;
+            }
+
+            if (_selectedTabItem[CrawlType.DCInside])
+            {
+                DCBoardType boardType = (DCBoardType)_cbDCCrawlCategory.SelectedIndex;
+                int.TryParse(_tbDCCrawlPage.Text, out int page);
+
+                if (page <= 0)
+                {
+                    MsgBox.ShowTopMost("페이지를 입력해주세요.");
+                    return;
+                }
+
+                if (modifyTask == null)
+                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
+                else
+                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
+
+                UpdateCrawlTaskList();
+            }
+            else if (_selectedTabItem[CrawlType.FMKorea])
+            {
+                FMBoardType boardType = (FMBoardType)_cbFMCrawlCategory.SelectedIndex;
+                int.TryParse(_tbDCCrawlPage.Text, out int page);
+                FMSearchOption searchOption = FMSearchOption.None;
+                string searchContent = "";
+
+                if (_chkbFMCrawlSearchOptionEnable.IsChecked != null &&
+                    _chkbFMCrawlSearchOptionEnable.IsChecked.Value)
+                    searchOption = (FMSearchOption)_cbFMCrawlSearchOption.SelectedIndex;
+
+                if (_chkbFMCrawlSearchContentEnable.IsChecked != null &&
+                    _chkbFMCrawlSearchContentEnable.IsChecked.Value)
+                    searchContent = _tbFMCrawlSearchContent.Text.Trim();
+
+                if (modifyTask == null)
+                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
+                else
+                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
+                UpdateCrawlTaskList();
+            }
+        }
+
+        private void _btnCrawlRemove_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedCrawlTask == null)
+                return;
+
+            _crawlTaskManager.Unregister(_selectedCrawlTask);
+            UpdateCrawlTaskList();
+        }
+
+        private void _btnCrawlModify_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedCrawlTask == null)
+                return;
+
+            AddOrModifyTask(_selectedCrawlTask);
         }
     }
 }

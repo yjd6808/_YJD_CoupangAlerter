@@ -1,4 +1,9 @@
-﻿using System;
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ */
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -67,7 +72,7 @@ namespace RequestApi.Crawl
 
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(CrawlUrl);
             req.Method = "GET";
-            req.Timeout = 1000; 
+            req.Timeout = 1000;
             req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
 
             // 웹 페이지가 소스가 1MB를 넘어가진 않겠지..?
@@ -84,5 +89,7 @@ namespace RequestApi.Crawl
             content = Encoding.UTF8.GetString(totalRecv);
             return true;
         }
+
+        public abstract AbstractCrawl Clone();
     }
 }

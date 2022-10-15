@@ -1,4 +1,9 @@
-﻿// 에펨코리아 주식 크롤링
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ * 에펨코리아 주식 크롤링
+ * * * * * * * * * * * * * * 
+ */
 
 using RequestApi.Crawl.Result;
 using System;
@@ -195,6 +200,11 @@ namespace RequestApi.Crawl
             }
 
             return null;
+        }
+
+        public override AbstractCrawl Clone()
+        {
+            return new FMKoreaCrawl(SearchOption, SearchContent, BoardType, Page);
         }
     }
 }

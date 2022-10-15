@@ -8,11 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\Icons\close_144.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RequestApi\RequestApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Speech" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Icons\close_144.png" />
   </ItemGroup>
 
 </Project>

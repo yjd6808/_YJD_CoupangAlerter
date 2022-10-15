@@ -1,4 +1,9 @@
-﻿using System;
+﻿/* * * * * * * * * * * * * 
+ * 작성자: 윤정도
+ * * * * * * * * * * * * *
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -13,10 +18,10 @@ namespace RequestApi.Crawl
     public class CrawlTaskWorker
     {
         private Thread _workerThread;
-        private int _crawlType;
-        
-        private int _delay;
-        private bool _running;
+
+        private readonly int _crawlType;
+        private readonly int _delay;
+        private volatile bool _running;
 
         public AutoResetEvent Waitor { get; }
         public AutoResetEvent Signal { get; }
@@ -28,10 +33,11 @@ namespace RequestApi.Crawl
         {
             _taskQueue = new LinkedList<CrawlTask>();
             _running = false;
+            _delay = delay;
+            _crawlType = crawlType;
 
             Waitor = waitor;
             Signal = signal;
-            _crawlType = crawlType;
         }
 
         public void Start()
@@ -93,7 +99,6 @@ namespace RequestApi.Crawl
                         return;
 
                     LinkedListNode<CrawlTask> cur = _taskQueue.First;
-                    Debug.WriteLine($"\t{CrawlType.ToString(_crawlType)} WorkerThread Signal Received!");
 
                     while (cur != null)
                     {
@@ -105,13 +110,16 @@ namespace RequestApi.Crawl
                         // 처리한 작업은 삭제해주자.
                         _taskQueue.Remove(temp);
                         ThreadExtension.ReleaseAcquireSleep(this, _delay);
+
+                        if (!_running)
+                            return;
                     }
 
                     // 작업을 마치면 CrawlTaskManager로 시그널을 보내줘서 작업이 완료됬음을 알려준다.
-                    Signal.Set();
                 }
                 finally
                 {
+                    Signal.Set();
                     Monitor.Exit(this);
                 }
             }
