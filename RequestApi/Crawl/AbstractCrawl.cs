@@ -80,8 +80,13 @@ namespace RequestApi.Crawl
             using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
             using (Stream responseStream = response.GetResponseStream())
             {
+
+                if (responseStream == null)
+                    return false;
+
                 int readBytes = 0;
                 int offset = 0;
+
                 while ((readBytes = responseStream.Read(totalRecv, offset, 1024)) != 0)
                     offset += readBytes;
             }

@@ -43,7 +43,7 @@
             <!-- 0 -->
             <Rectangle x:Name="_recStatusBar"
                        Fill="PaleVioletRed"
-                       Margin="5, 5, 5, 5"></Rectangle>
+                       Margin="5, 5, 5, 5"/>
 
             <!-- 1 -->
             <Label Grid.Column="1"
@@ -186,7 +186,7 @@
                                    Grid.Column="0"
                                    Text="페이지"
                                    Style="{StaticResource DefaultLabelStyle}" />
-                            <Editor Grid.Row="1"
+                            <Entry Grid.Row="1"
                                     Grid.Column="1"
                                     FontSize="Small"
                                     Text="1"
@@ -264,7 +264,7 @@
                                    Grid.Column="0"
                                    Text="페이지"
                                    Style="{StaticResource DefaultLabelStyle}" />
-                            <Editor Grid.Row="1"
+                            <Entry Grid.Row="1"
                                     Grid.Column="1"
                                     Text="1"
                                     FontSize="Small"
@@ -314,7 +314,7 @@
                                    Margin="15, 0, 0, 0"
                                    Style="{StaticResource DefaultLabelStyle}" />
 
-                            <Editor Grid.Row="3"
+                            <Entry Grid.Row="3"
                                     Grid.Column="1"
                                     x:Name="_tbFMCrawlSearchContent" />
                         </Grid>
@@ -368,6 +368,8 @@
                                    Style="{StaticResource DefaultLabelStyle}"
                                    HorizontalOptions="Start" />
                         </Grid>
+
+
                     </StackLayout>
                 </xct:TabViewItem>
             </xct:TabView>
@@ -454,7 +456,7 @@
                     <Label Grid.Column="0"
                            Text="매칭 내용"
                            Style="{StaticResource DefaultLabelStyle}" />
-                    <Editor Grid.Column="1"
+                    <Entry Grid.Column="1"
                             Margin="0"
                             VerticalOptions="Center"
                             HorizontalOptions="Fill"
@@ -474,7 +476,7 @@
                     <Label Grid.Column="0"
                            Text="작업 이름"
                            Style="{StaticResource DefaultLabelStyle}" />
-                    <Editor Grid.Column="1"
+                    <Entry Grid.Column="1"
                             VerticalOptions="Center"
                             HorizontalOptions="Fill"
                             FontSize="Small"

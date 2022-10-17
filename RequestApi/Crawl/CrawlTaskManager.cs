@@ -85,7 +85,7 @@ namespace RequestApi.Crawl
             _running = false;
 
             _blockedCrawl = new bool[CrawlType.Max];
-            _blockedCrawl[CrawlType.FMKorea] = true;
+            _blockedCrawl[CrawlType.FMKorea] = false;
             _blockedCrawl[CrawlType.DCInside] = false;
 
             _crawlDelay = new int[CrawlType.Max];
@@ -245,6 +245,8 @@ namespace RequestApi.Crawl
 
                 CrawlDelay[CrawlType.DCInside] = int.Parse(root["dcCrawlDelay"].ToString());
                 CrawlDelay[CrawlType.FMKorea] = int.Parse(root["fmCrawlDelay"].ToString());
+                _blockedCrawl[CrawlType.DCInside] = bool.Parse(root["dcCrawlBlocked"].ToString());
+                _blockedCrawl[CrawlType.FMKorea] = bool.Parse(root["fmCrawlBlocked"].ToString());
                 CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
 
                 foreach (JObject crawlObj in crawlArray)
@@ -349,6 +351,8 @@ namespace RequestApi.Crawl
             root.Add("crawls", crawlArray);
             root.Add("dcCrawlDelay", CrawlDelay[CrawlType.DCInside]);
             root.Add("fmCrawlDelay", CrawlDelay[CrawlType.FMKorea]);
+            root.Add("dcCrawlBlocked", _blockedCrawl[CrawlType.DCInside]);
+            root.Add("fmCrawlBlocked", _blockedCrawl[CrawlType.FMKorea]);
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
 
             File.WriteAllText(saveFilePath, root.ToString());

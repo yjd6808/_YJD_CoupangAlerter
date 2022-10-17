@@ -90,8 +90,8 @@ namespace AndroidApp.Droid.Classes.Services.Notification
                 .SetContentIntent(pendingIntent)
                 .SetContentTitle(title)
                 .SetContentText(message)
-                .SetLargeIcon(BitmapFactory.DecodeResource(Application.Context.Resources, Resource.Drawable.abc_ab_share_pack_mtrl_alpha))
-                .SetSmallIcon(Resource.Drawable.abc_scrubber_control_off_mtrl_alpha)
+                .SetLargeIcon(BitmapFactory.DecodeResource(Application.Context.Resources, Resource.Mipmap.icon))
+                .SetSmallIcon(Resource.Mipmap.icon)
                 .SetDefaults((int)NotificationDefaults.Sound | (int)NotificationDefaults.Vibrate);
 
             Android.App.Notification notification = builder.Build();

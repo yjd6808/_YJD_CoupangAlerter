@@ -38,11 +38,12 @@ namespace AndroidApp
         private readonly INotificationManager _notificationManager;
         private readonly SolidColorBrush _disabledForegroundColor = new SolidColorBrush(Color.FromRgb(126, 126, 126));
         private readonly CrawlTaskManager _crawlTaskManager = new CrawlTaskManager();
+        private readonly Stopwatch _listViewDoubleTapTimer = Stopwatch.StartNew();
         private CrawlTask _selectedCrawlTask;
 
 
         public MainPage()
-        { 
+        {
             _crawlTaskManager.SetConfigDirectory(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "CoupangAlerter/config"));
             _crawlTaskManager.TryLoadTaskFile();
             _crawlTaskManager.TryLoadCompleteFile();
@@ -76,6 +77,8 @@ namespace AndroidApp
 
             _chkbFMCrawlSearchOptionEnable.IsChecked = false;
             _chkbFMCrawlSearchContentEnable.IsChecked = false;
+            _chkbFMCrawlEnable.IsChecked = _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
+            _chkbDCCrawlEnable.IsChecked = _crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _tbcCrawl.SelectedIndex = 0;
 
             SelectDCCrawlTabItem();
@@ -497,6 +500,15 @@ namespace AndroidApp
 
         private async void _livLog_OnItemTapped(object sender, ItemTappedEventArgs e)
         {
+            _listViewDoubleTapTimer.Stop();
+
+            
+            if (_listViewDoubleTapTimer.Elapsed > TimeSpan.FromMilliseconds(150))
+            {
+                // 더블탭이 아닌 경우 다시 설정해놓고 나감
+                _listViewDoubleTapTimer.Start();
+                return;
+            }
 
 
             var log = _livLog.SelectedItem as Log;
@@ -515,24 +527,42 @@ namespace AndroidApp
             _selectedCrawlTask = task;
             SetEnableTaskManipulationUIElements(true);
 
+            _listViewDoubleTapTimer.Stop();
+
+            if (_listViewDoubleTapTimer.Elapsed > TimeSpan.FromMilliseconds(150))
+            {
+                // 더블탭이 아닌 경우 다시 설정해놓고 나감
+                _listViewDoubleTapTimer.Start();
+                return;
+            }
+
             UpdateCrawlTaskCommonUI(_selectedCrawlTask);
 
             if (_selectedCrawlTask.CrawlType == CrawlType.DCInside)
                 UpdateDCCrawlTaskUI(_selectedCrawlTask);
             else if (_selectedCrawlTask.CrawlType == CrawlType.FMKorea)
                 UpdateFMCrawlTaskUI(_selectedCrawlTask);
-            
         }
 
         private void _chkbDCCrawlEnable_OnCheckedChanged(object sender, CheckedChangedEventArgs e)
         {
-            _crawlTaskManager.BlockedCrawl[0] = true;
+            if (e.Value)
+                _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = true;
+            else
+                _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = false;
+
             _crawlTaskManager.SaveTaskFile();
+
         }
 
         private void _chkbFMCrawlEnable_OnCheckedChanged(object sender, CheckedChangedEventArgs e)
         {
-            throw new NotImplementedException();
+            if (e.Value)
+                _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = true;
+            else
+                _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = false;
+
+            _crawlTaskManager.SaveTaskFile();
         }
     }
 }
