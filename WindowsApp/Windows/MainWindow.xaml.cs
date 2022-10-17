@@ -85,13 +85,16 @@ namespace WindowsApp.Windows
             Task.Run(() =>
             {
                 _speeching = true;
-                _speechSynthesizer.Speak("found matched result! check out result");
+                _speechSynthesizer.Speak("found matched result!");
             }).ContinueWith(x => _speeching = false);
         }
 
-        private void OnCrawlFailed(CrawlTask task)
+        private void OnCrawlFailed(CrawlTask task, string errorMessage)
         {
             UpdateStatusBar();
+
+            if (errorMessage != string.Empty)
+                Dispatcher.BeginInvoke(() => AddNoticeLog(errorMessage));
         }
 
         private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
@@ -116,6 +119,11 @@ namespace WindowsApp.Windows
 
             _btnStopCrawling.IsEnabled = false;
             _btnStopCrawling.Foreground = _disabledForegroundColor;
+
+            _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
+            _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
+            _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
+            _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
         }
 
         private void MainWindow_OnClosed(object? sender, EventArgs e)
@@ -441,8 +449,18 @@ namespace WindowsApp.Windows
             if (fmCrawl == null) throw new Exception("말도 안 돼!");
             _cbFMCrawlCategory.SelectedIndex = (int)fmCrawl.BoardType;
             _tbFMCrawlPage.Text = fmCrawl.Page.ToString();
-            _cbFMCrawlSearchOption.SelectedIndex = (int)fmCrawl.SearchOption;
-            _tbFMCrawlSearchContent.Text = fmCrawl.SearchContent;
+
+            if (fmCrawl.SearchOption != FMSearchOption.None)
+            {
+                _chkbFMCrawlSearchOptionEnable.IsChecked = true;
+                _cbFMCrawlSearchOption.SelectedIndex = (int)fmCrawl.SearchOption;
+            }
+
+            if (fmCrawl.SearchContent != "")
+            {
+                _chkbFMCrawlSearchContentEnable.IsChecked = true;
+                _tbFMCrawlSearchContent.Text = fmCrawl.SearchContent;
+            }
         }
 
         private void UpdateCrawlTaskCommonUI(CrawlTask task)
@@ -520,9 +538,9 @@ namespace WindowsApp.Windows
                 }
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
+                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
                 else
-                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
+                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
             }
             else if (_selectedTabItem[CrawlType.FMKorea])
             {
@@ -540,10 +558,100 @@ namespace WindowsApp.Windows
                     searchContent = _tbFMCrawlSearchContent.Text.Trim();
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
                 else
-                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
             }
+        }
+
+       
+
+        private void _chkbDCCrawlEnable_OnCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_chkbDCCrawlEnable.IsChecked == null)
+                return;
+
+            if (_chkbDCCrawlEnable.IsChecked.Value)
+                _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = false;
+            else
+                _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = true;
+        }
+
+        private void _chkbFMCrawlEnable_OnCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_chkbFMCrawlEnable.IsChecked == null)
+                return;
+
+            if (_chkbFMCrawlEnable.IsChecked.Value)
+                _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = false;
+            else
+                _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = true;
+        }
+
+        private void _btnSaveSetting_OnClicked(object sender, EventArgs e)
+        {
+            if (_crawlTaskManager.Running)
+            {
+                MsgBox.ShowTopMost("먼저 정지를 해주세요.");
+                return;
+            }
+
+            if (_tbDCCrawlDelay.Text.Length == 0)
+            {
+                MsgBox.ShowTopMost("디시인사이드 크롤링 주기를 입력해주세요.");
+                return;
+            }
+
+            if (_tbFMCrawlDelay.Text.Length == 0)
+            {
+                MsgBox.ShowTopMost("에펨코리아 크롤링 주기를 입력해주세요.");
+                return;
+            }
+
+            int.TryParse(_tbDCCrawlDelay.Text, out int dcCrawlDelay);
+            int.TryParse(_tbFMCrawlDelay.Text, out int fmCrawlDelay);
+
+            if (dcCrawlDelay < 1000 || fmCrawlDelay < 1000)
+            {
+                MsgBox.ShowTopMost("크롤링 주기는 1000이상 입력해주세요.");
+                return;
+            }
+
+            _crawlTaskManager.CrawlDelay[CrawlType.DCInside] = dcCrawlDelay;
+            _crawlTaskManager.CrawlDelay[CrawlType.FMKorea] = fmCrawlDelay;
+
+            _crawlTaskManager.ApplyDelay();
+            _crawlTaskManager.SaveTaskFile();
+            AddNoticeLog("적용완료");
+        }
+        
+
+        private void _btnClearCompletes_OnClicked(object sender, RoutedEventArgs e)
+        {
+            if (MessageBox.Show("완료 목록을 정말로 초기화 하시겠습니가?", "메시지", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                _crawlTaskManager.ClearCompletes();
+                AddNoticeLog("완료 목록 초기화완료");
+            }
+        }
+
+        private void _btnClearTasks_OnClicked(object sender, RoutedEventArgs e)
+        {
+            if (MessageBox.Show("요청 목록을 정말로 초기화 하시겠습니가?", "메시지", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                _crawlTaskManager.ClearTasks();
+                UpdateCrawlTaskList();
+                AddNoticeLog("요청 목록 초기화완료");
+            }
+        }
+
+        private void _btnReloadSetting_OnClick(object sender, RoutedEventArgs e)
+        {
+            _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
+            _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
+            _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
+            _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
+            AddNoticeLog("설정 리로드 완료");
         }
     }
 }

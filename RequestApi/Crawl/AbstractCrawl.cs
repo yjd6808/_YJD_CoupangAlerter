@@ -41,8 +41,10 @@ namespace RequestApi.Crawl
         protected abstract List<CrawlResult> ParseContent(HtmlDocument document);
 
         // 실패시 null
-        public List<CrawlResult> TryCrawl()
+        public List<CrawlResult> TryCrawl(out string errorMessage)
         {
+            errorMessage = "";
+
             try
             {
                 string content = "";
@@ -54,13 +56,10 @@ namespace RequestApi.Crawl
                 document.LoadHtml(content);
                 return ParseContent(document);
             }
-            catch
+            catch (Exception e)
             {
-#if DEBUG
-                throw;
-#else
+                errorMessage = e.Message;
                 return null;
-#endif
             }
         }
 
@@ -72,7 +71,6 @@ namespace RequestApi.Crawl
 
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(CrawlUrl);
             req.Method = "GET";
-            req.Timeout = 1000;
             req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
 
             // 웹 페이지가 소스가 1MB를 넘어가진 않겠지..?

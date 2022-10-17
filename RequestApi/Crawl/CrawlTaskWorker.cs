@@ -20,8 +20,10 @@ namespace RequestApi.Crawl
         private Thread _workerThread;
 
         private readonly int _crawlType;
-        private readonly int _delay;
+        
         private volatile bool _running;
+
+        private int _delay;
 
         public AutoResetEvent Waitor { get; }
         public AutoResetEvent Signal { get; }
@@ -47,15 +49,21 @@ namespace RequestApi.Crawl
             _workerThread = new Thread(WorkerThread);
             _workerThread.IsBackground = true;
             _workerThread.Start();
-            
-            
+        }
+
+        public void SetDelay(int delay)
+        {
+            if (_running) throw new Exception("실행중에는 설정 ㄴ");
+            _delay = delay;
         }
 
         public void Stop()
         {
             if (!_running) throw new Exception("시작되지 않았습니다.");
             _running = false;
-            Waitor.Set();
+            Waitor.Set();               // 쓰레드 쉬는 장소 (1)에서 자고 이쓴 상태를 강제로 깨우기 위함
+            lock (this)                 // 쓰레드 쉬는 장소 (2)에서 자고 있는 상태를 강제로 깨우기 위함
+                Monitor.Pulse(this);
             _workerThread.Join();
         }
 
@@ -93,6 +101,7 @@ namespace RequestApi.Crawl
                 {
                     // CrawlTaskManager의 OnTick() 함수가 실행완료되어서 _taskQueue에 크롤링 작업들이 모두 찬 경우
                     // CrawlTaskManager에서 _waitor로 시그널을 보내주도록 하였다.
+                    // 쓰레드 쉬는 장소 (1)
                     Waitor.ReleaseAcquireWaitOne(this);
 
                     if (!_running)
@@ -109,16 +118,31 @@ namespace RequestApi.Crawl
 
                         // 처리한 작업은 삭제해주자.
                         _taskQueue.Remove(temp);
-                        ThreadExtension.ReleaseAcquireSleep(this, _delay);
 
-                        if (!_running)
-                            return;
+
+                        // 크롤링 시간 후 대기하는 시간이 너무 길어질 수 있으므로 주기적으로 얼마나 잤는지 체크해준다.
+                        // 쓰레드 쉬는 장소 (2)
+                        int sleepTime = 0;
+                        Stopwatch stopwatch = Stopwatch.StartNew();
+                        for (;;)
+                        {
+                            Monitor.Wait(this);
+                            
+                            if (!_running)
+                                return;
+
+                            stopwatch.Stop();
+                            sleepTime += (int)stopwatch.Elapsed.TotalMilliseconds;
+                            stopwatch.Reset();
+                            stopwatch.Start();
+                            if (sleepTime >= _delay)
+                                break;
+                        }
                     }
-
-                    // 작업을 마치면 CrawlTaskManager로 시그널을 보내줘서 작업이 완료됬음을 알려준다.
                 }
                 finally
                 {
+                    // 작업을 마치면 CrawlTaskManager로 시그널을 보내줘서 작업이 완료됬음을 알려준다.
                     Signal.Set();
                     Monitor.Exit(this);
                 }

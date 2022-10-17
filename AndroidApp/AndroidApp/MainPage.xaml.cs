@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AndroidApp.Classes.Services.App;
+using AndroidApp.Classes.Services.Network;
 using AndroidApp.Classes.Services.Notification;
 using AndroidApp.Classes.Utils;
 using RequestApi.Crawl;
@@ -38,7 +40,8 @@ namespace AndroidApp
         private readonly INotificationManager _notificationManager;
         private readonly SolidColorBrush _disabledForegroundColor = new SolidColorBrush(Color.FromRgb(126, 126, 126));
         private readonly CrawlTaskManager _crawlTaskManager = new CrawlTaskManager();
-        private readonly Stopwatch _listViewDoubleTapTimer = Stopwatch.StartNew();
+        private bool _isDataNetworkActivated = false;
+        private bool _isWifiNetworkActivated = false;
         private CrawlTask _selectedCrawlTask;
 
 
@@ -58,34 +61,70 @@ namespace AndroidApp
 
             InitializeComponent();
             InitializeDefaultUIStates();
+            
 
             _livLog.ItemsSource = _logs;
             _livDCCrawlList.ItemsSource = _crawlTaskList[CrawlType.DCInside];
             _livFMCrawlList.ItemsSource = _crawlTaskList[CrawlType.FMKorea];
 
-            /*
-            notificationManager.NotificationReceived += (sender, eventArgs) =>
-            {
-                var evtData = (NotificationEventArgs)eventArgs;
-                ShowNotification(evtData.Title, evtData.Message);
-            };
-            */
+
+            // 인터넷 상태 확인방법
+            CheckNetworkState();
+
+            // 인터넷 상태 변경감지
+            Connectivity.ConnectivityChanged += (sender, args) => Device.BeginInvokeOnMainThread(CheckNetworkState);
         }
 
         private void InitializeDefaultUIStates()
         {
-
             _chkbFMCrawlSearchOptionEnable.IsChecked = false;
             _chkbFMCrawlSearchContentEnable.IsChecked = false;
-            _chkbFMCrawlEnable.IsChecked = _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
-            _chkbDCCrawlEnable.IsChecked = _crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
+            _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
+            _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
+            _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
+            _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _tbcCrawl.SelectedIndex = 0;
+
+            
 
             SelectDCCrawlTabItem();
             UpdateCrawlTaskList();
 
             _btnStopCrawling.IsEnabled = false;
             _btnStopCrawling.TextColor = _disabledForegroundColor.Color;
+        }
+
+        private void CheckNetworkState()
+        {
+            var isSimulator = DeviceInfo.DeviceType == DeviceType.Virtual;
+
+            if (isSimulator)
+            {
+                _isDataNetworkActivated = false;
+                _isWifiNetworkActivated = true;
+                return;
+            }
+
+            _isDataNetworkActivated = false;
+            _isWifiNetworkActivated = false;
+
+            if (Connectivity.NetworkAccess == NetworkAccess.Internet)
+            {
+                if (DependencyService.Get<INetConnectivityService>().IsActivated(NetConnectivityType.Cellular))
+                {
+                    _isDataNetworkActivated = true;
+                    AddNoticeLog("데이터 통신이 켜져있습니다.");
+                }
+
+                if (DependencyService.Get<INetConnectivityService>().IsActivated(NetConnectivityType.Wifi))
+                    _isWifiNetworkActivated = true;
+
+                AddNoticeLog($"인터넷 상태: 연결 중");
+            }
+            else
+            {
+                AddNoticeLog("인터넷 연결을 해주세요.");
+            }
         }
 
         private void OnCrawlRequest(CrawlTask task)
@@ -98,12 +137,16 @@ namespace AndroidApp
             UpdateStatusBar();
             AddCrawlMatchedLog(matchedresult);
 
+
             _notificationManager.SendNotification($"[{matchedresult.MatchedTime:tt h:mm:ss}] {matchedresult.Result.Name}", matchedresult.Result.Title);
         }
 
-        private void OnCrawlFailed(CrawlTask task)
+        private void OnCrawlFailed(CrawlTask task, string errorMessage)
         {
             UpdateStatusBar();
+
+            if (errorMessage != string.Empty)
+                AddNoticeLog(errorMessage);
         }
 
         private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
@@ -201,9 +244,15 @@ namespace AndroidApp
             DependencyService.Get<ICloseApplication>().Close();
         }
 
-        
-        private void _btnStartCrawling_OnClick(object sender, EventArgs e)
+
+        private async void _btnStartCrawling_OnClick(object sender, EventArgs e)
         {
+            if (_isDataNetworkActivated)
+            {
+                var msgResult = await DisplayAlert("메시지", "데이터 통신이 켜져있습니다. 그래도 시작하시겠습니까?", "Yes", "No");
+                if (!msgResult) return;
+            }
+
             _crawlTaskManager.Start();
             _btnStartCrawling.IsEnabled = false;
             _btnStartCrawling.TextColor = _disabledForegroundColor.Color;
@@ -232,7 +281,7 @@ namespace AndroidApp
             AddNoticeLog("크롤링 중지");
         }
 
-     
+
         private void UpdateDCCrawlTaskUI(CrawlTask task)
         {
             var dcCrawl = task.Crawl.To<DCInsideCrawl>();
@@ -247,8 +296,18 @@ namespace AndroidApp
             if (fmCrawl == null) throw new Exception("말도 안 돼!");
             _cbFMCrawlCategory.SelectedIndex = (int)fmCrawl.BoardType;
             _tbFMCrawlPage.Text = fmCrawl.Page.ToString();
-            _cbFMCrawlSearchOption.SelectedIndex = (int)fmCrawl.SearchOption;
-            _tbFMCrawlSearchContent.Text = fmCrawl.SearchContent;
+
+            if (fmCrawl.SearchOption != FMSearchOption.None)
+            {
+                _chkbFMCrawlSearchOptionEnable.IsChecked = true;
+                _cbFMCrawlSearchOption.SelectedIndex = (int)fmCrawl.SearchOption;
+            }
+
+            if (fmCrawl.SearchContent != "")
+            {
+                _chkbFMCrawlSearchContentEnable.IsChecked = true;
+                _tbFMCrawlSearchContent.Text = fmCrawl.SearchContent;
+            }
         }
 
         private void UpdateCrawlTaskCommonUI(CrawlTask task)
@@ -312,7 +371,7 @@ namespace AndroidApp
             if (AddOrModifyTask(_selectedCrawlTask))
             {
                 UpdateCrawlTaskList();
-                _tbcCrawl_OnSelectionChanged(null,null);
+                _tbcCrawl_OnSelectionChanged(null, null);
             }
         }
 
@@ -329,15 +388,15 @@ namespace AndroidApp
 
             if (_cbCrawlMatchType.SelectedIndex == -1)
             {
-                this.DisplayAlert("매칭 타입을 선택해주세요.");
+                this.DisplayAlertFireAndForget("매칭 타입을 선택해주세요.");
                 return false;
             }
 
             if (_cbCrawlStringMatchRule.SelectedIndex == -1)
             {
-                this.DisplayAlert("문자열 체크 방식을 선택해주세요.");
+                this.DisplayAlertFireAndForget("문자열 체크 방식을 선택해주세요.");
                 return false;
-            } 
+            }
 
             CrawlMatchType matchType = (CrawlMatchType)_cbCrawlMatchType.SelectedIndex;
             CrawlStringMatchRule stringMatchRule = (CrawlStringMatchRule)_cbCrawlStringMatchRule.SelectedIndex;
@@ -346,13 +405,13 @@ namespace AndroidApp
 
             if (matchContent.Length == 0)
             {
-                this.DisplayAlert("매칭 내용을 입력해주세요.");
+                this.DisplayAlertFireAndForget("매칭 내용을 입력해주세요.");
                 return false;
             }
 
             if (taskName.Length == 0)
             {
-                this.DisplayAlert("작업 이름을 입력해주세요.");
+                this.DisplayAlertFireAndForget("작업 이름을 입력해주세요.");
                 return false;
             }
 
@@ -363,14 +422,14 @@ namespace AndroidApp
 
                 if (page <= 0)
                 {
-                    this.DisplayAlert("페이지를 입력해주세요.");
+                    this.DisplayAlertFireAndForget("페이지를 입력해주세요.");
                     return false;
                 }
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
+                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
                 else
-                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
+                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
             }
             else if (_tbcCrawl.TabItems[CrawlType.FMKorea].IsSelected)
             {
@@ -386,10 +445,10 @@ namespace AndroidApp
                     searchContent = _tbFMCrawlSearchContent.Text.Trim();
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
                 else
-                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
-                
+                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
+
             }
 
             return true;
@@ -409,9 +468,9 @@ namespace AndroidApp
             {
                 switch (pos)
                 {
-                    case CrawlType.FMKorea: SelectFMCrawlTabItem();  break;
-                    case CrawlType.DCInside: SelectDCCrawlTabItem();  break;
-                    default: SelectSettingTabItem();  return;
+                    case CrawlType.FMKorea: SelectFMCrawlTabItem(); break;
+                    case CrawlType.DCInside: SelectDCCrawlTabItem(); break;
+                    default: SelectSettingTabItem(); return;
                 }
             }
         }
@@ -495,22 +554,11 @@ namespace AndroidApp
                     _crawlTaskList[selectedCralType].Add(task);
                 });
             });
-            
+
         }
 
         private async void _livLog_OnItemTapped(object sender, ItemTappedEventArgs e)
         {
-            _listViewDoubleTapTimer.Stop();
-
-            
-            if (_listViewDoubleTapTimer.Elapsed > TimeSpan.FromMilliseconds(150))
-            {
-                // 더블탭이 아닌 경우 다시 설정해놓고 나감
-                _listViewDoubleTapTimer.Start();
-                return;
-            }
-
-
             var log = _livLog.SelectedItem as Log;
             if (log == null || string.IsNullOrWhiteSpace(log.Url)) return;
             await Browser.OpenAsync(log.Url);
@@ -527,15 +575,6 @@ namespace AndroidApp
             _selectedCrawlTask = task;
             SetEnableTaskManipulationUIElements(true);
 
-            _listViewDoubleTapTimer.Stop();
-
-            if (_listViewDoubleTapTimer.Elapsed > TimeSpan.FromMilliseconds(150))
-            {
-                // 더블탭이 아닌 경우 다시 설정해놓고 나감
-                _listViewDoubleTapTimer.Start();
-                return;
-            }
-
             UpdateCrawlTaskCommonUI(_selectedCrawlTask);
 
             if (_selectedCrawlTask.CrawlType == CrawlType.DCInside)
@@ -547,22 +586,86 @@ namespace AndroidApp
         private void _chkbDCCrawlEnable_OnCheckedChanged(object sender, CheckedChangedEventArgs e)
         {
             if (e.Value)
-                _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = true;
-            else
                 _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = false;
-
-            _crawlTaskManager.SaveTaskFile();
-
+            else
+                _crawlTaskManager.BlockedCrawl[CrawlType.DCInside] = true;
         }
 
         private void _chkbFMCrawlEnable_OnCheckedChanged(object sender, CheckedChangedEventArgs e)
         {
             if (e.Value)
-                _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = true;
-            else
                 _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = false;
+            else
+                _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = true;
+        }
 
+
+        private void _btnSaveSetting_OnClicked(object sender, EventArgs e)
+        {
+            if (_crawlTaskManager.Running)
+            {
+                this.DisplayAlertFireAndForget("먼저 정지를 해주세요.");
+                return;
+            }
+
+            if (_tbDCCrawlDelay.Text.Length == 0)
+            {
+                this.DisplayAlertFireAndForget("디시인사이드 크롤링 주기를 입력해주세요.");
+                return;
+            }
+
+            if (_tbFMCrawlDelay.Text.Length == 0)
+            {
+                this.DisplayAlertFireAndForget("에펨코리아 크롤링 주기를 입력해주세요.");
+                return;
+            }
+
+            int.TryParse(_tbDCCrawlDelay.Text, out int dcCrawlDelay);
+            int.TryParse(_tbFMCrawlDelay.Text, out int fmCrawlDelay);
+
+            if (dcCrawlDelay < 1000 || fmCrawlDelay < 1000)
+            {
+                this.DisplayAlertFireAndForget("크롤링 주기는 1000이상 입력해주세요.");
+                return;
+            }
+
+            _crawlTaskManager.CrawlDelay[CrawlType.DCInside] = dcCrawlDelay;
+            _crawlTaskManager.CrawlDelay[CrawlType.FMKorea] = fmCrawlDelay;
+
+            _crawlTaskManager.ApplyDelay();
             _crawlTaskManager.SaveTaskFile();
+            AddNoticeLog("적용완료");
+        }
+
+
+        private async void _btnClearCompletes_OnClicked(object sender, EventArgs e)
+        {
+            var msgResult = await DisplayAlert("메시지", "완료 목록을 정말로 초기화 하시겠습니가?", "yes", "no");
+            if (msgResult)
+            {
+                _crawlTaskManager.ClearCompletes();
+                AddNoticeLog("완료 목록 초기화완료");
+            }
+        }
+
+        private async void _btnClearTasks_OnClicked(object sender, EventArgs e)
+        {
+            var msgResult = await DisplayAlert("메시지", "요청 목록을 정말로 초기화 하시겠습니가?", "yes", "no");
+            if (msgResult)
+            {
+                _crawlTaskManager.ClearTasks();
+                UpdateCrawlTaskList();
+                AddNoticeLog("요청 목록 초기화완료");
+            }
+        }
+
+        private void _btnReloadSetting_OnClick(object sender, EventArgs e)
+        {
+            _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
+            _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
+            _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
+            _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
+            AddNoticeLog("설정 리로드 완료");
         }
     }
 }

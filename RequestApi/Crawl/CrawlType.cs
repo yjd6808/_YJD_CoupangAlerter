@@ -24,5 +24,17 @@ namespace RequestApi.Crawl
                 default: throw new ArgumentException("잘못된 인자입니다.");
             }
         }
+
+
+        public static int ToFlag(int crawlType)
+        {
+            switch (crawlType)
+            {
+                case DCInside: return 1;
+                case FMKorea: return 2;
+                // case FMKorea: return 4;
+                default: throw new ArgumentException("잘못된 인자입니다.");
+            }
+        }
     }
 }
