@@ -21,7 +21,7 @@ using RequestApi.Utils;
 namespace RequestApi.Crawl
 {
     public delegate void CrawlRequest(CrawlTask task);
-    public delegate void CrawlFailed(CrawlTask task);
+    public delegate void CrawlFailed(CrawlTask task, string errorMessage);
     public delegate void CrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlResult);
     public delegate void CrawlMatched(CrawlTask crawl, MatchedCrawlResult matchedResult);
 
@@ -54,7 +54,7 @@ namespace RequestApi.Crawl
         // 매칭 판정된 게시글을 얼마나 기록할지 => 1일
         // 이걸 기록안하면 매칭된 게시글 결과 정보가 계속 누적되게 될 수 있으므로 주기적으로 확인해서 비워줄 필요가 있다.
         public static TimeSpan ExpiredDuration => new TimeSpan(1, 0, 0, 0);
-
+        public const int DefaultMatchingRange = 1440;
 
         private Thread _workerThread;
 
@@ -89,8 +89,8 @@ namespace RequestApi.Crawl
             _blockedCrawl[CrawlType.DCInside] = false;
 
             _crawlDelay = new int[CrawlType.Max];
-            _crawlDelay[CrawlType.FMKorea] = 300;
-            _crawlDelay[CrawlType.DCInside] = 300;
+            _crawlDelay[CrawlType.FMKorea] = 5000;
+            _crawlDelay[CrawlType.DCInside] = 5000;
             _crawlList = new List<CrawlTask>();
             _completedResults = new List<MatchedCrawlResult>();
 
@@ -249,6 +249,9 @@ namespace RequestApi.Crawl
                 _blockedCrawl[CrawlType.FMKorea] = bool.Parse(root["fmCrawlBlocked"].ToString());
                 CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
 
+                _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
+                _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
+
                 foreach (JObject crawlObj in crawlArray)
                 {
                     int crawlType = int.Parse(crawlObj["crawlType"].ToString());
@@ -403,9 +406,15 @@ namespace RequestApi.Crawl
             }
         }
 
+        public void ApplyDelay()
+        {
+            _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
+            _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
+        }
+
         
         // 빌더 패턴 고려할 것
-        public void RegisterDCCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        public void RegisterDCCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = DefaultMatchingRange, DCBoardType boardType = DCBoardType.전체글, int page = 1)
         {
             AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
             CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
@@ -428,7 +437,7 @@ namespace RequestApi.Crawl
 
         // 수정하고자하는 CrawlTask의 내용을 변경하는 행위 자체가 CrawlTask에서의 락 기능 구현을 강제해버리기 때문에 Idle 상태에서의 큰 성능저하가 발생한다.
         // 따라서 수정하고자하는 CrawlTask의 위치를 찾아낸 후 새로 생성 해서 동일한 위치에 삽입해주는 방식으로 구현하도록 한다.
-        public void ModifyDCCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = 30, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        public void ModifyDCCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = DefaultMatchingRange, DCBoardType boardType = DCBoardType.전체글, int page = 1)
         {
             AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
             CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
@@ -474,15 +483,25 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        public void Clear()
+        public void ClearTasks()
         {
             lock (this)
                 _crawlList.Clear();
             SaveTaskFile();
         }
 
+        public void ClearCompletes()
+        {
+            lock (this)
+                _completedResults.Clear();
+            SaveCompleteFile();
+        }
+
+
         private void WorkerThread(object state)
         {
+            BEGIN: 
+
             while (_running)
             {
                 lock (this)
@@ -500,7 +519,38 @@ namespace RequestApi.Crawl
                 foreach (var worker in _taskWorkers)
                     worker.Waitor.Set();
 
-                WaitHandle.WaitAll(_taskSignals);
+
+                int wakeUpFlag = 0;
+                int allWakedUp = CrawlType.ToFlag(CrawlType.DCInside) |     
+                                 CrawlType.ToFlag(CrawlType.FMKorea);
+
+                // 쓰레드 쉬는 장소(2)에서 블로킹 상태에 있는 쓰레드들을 일정시간마다 깨워서 시간을 체크해준다.
+                for (;;)
+                {
+                    for (int i = 0; i < CrawlType.Max; i++)
+                    {
+                        // 이미 Signal 핸들이 켜진 녀석은 채크할 필요가 없다.
+                        int flag = CrawlType.ToFlag(i);
+
+                        if ((wakeUpFlag & flag) == flag)
+                            continue;
+
+                        var worker = _taskWorkers[i];
+
+                        lock (worker)
+                            Monitor.Pulse(worker);
+
+                        Thread.Sleep(10);
+
+                        // 해당 워커 쓰레드의 크롤링 TaskQueue가 모두 비어져서 Signal 핸들이 켜진 경우
+                        if (worker.Signal.WaitOne(0))
+                            wakeUpFlag |= flag;
+                    }
+
+                    // 모든 워커 쓰레드가 작업이 완료된 경우
+                    if (wakeUpFlag == allWakedUp)
+                        goto BEGIN;
+                }
             }
         }
 

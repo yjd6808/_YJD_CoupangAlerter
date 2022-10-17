@@ -5,7 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WindowsApp"
         mc:Ignorable="d"
-        Height="770" Width="350" Closed="MainWindow_OnClosed" WindowStyle="None" FontSize="16" MouseDown="MainWindow_OnMouseDown" Loaded="MainWindow_OnLoaded" ResizeMode="NoResize">
+        Height="770"
+        Width="350"
+        Closed="MainWindow_OnClosed"
+        WindowStyle="None"
+        FontSize="16"
+        MouseDown="MainWindow_OnMouseDown"
+        Loaded="MainWindow_OnLoaded"
+        ResizeMode="NoResize">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"></RowDefinition>
@@ -16,7 +23,7 @@
 
 
         <!-- 0 -->
-        <Grid Grid.Row ="0">
+        <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="30"></ColumnDefinition>
                 <ColumnDefinition Width="*"></ColumnDefinition>
@@ -24,18 +31,22 @@
             </Grid.ColumnDefinitions>
 
             <!-- 0 -->
-            <Rectangle Name="_recStatusBar" Fill="PaleVioletRed" Margin="5, 5, 5, 5"></Rectangle>
+            <Rectangle Name="_recStatusBar"
+                       Fill="PaleVioletRed"
+                       Margin="5, 5, 5, 5"></Rectangle>
 
             <!-- 1 -->
             <TextBlock Grid.Column="1"
                        Name="_tblStatusBar"
-                       Text="정지 상태" 
+                       Text="정지 상태"
                        HorizontalAlignment="Left"
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center" />
 
             <!-- 1 -->
-            <Button Grid.Column="2" Click="ButtonBase_OnClick" VerticalAlignment="Stretch">
-                <Image Source="pack://application:,,,/Resources/Icons/close_144.png"/>
+            <Button Grid.Column="2"
+                    Click="ButtonBase_OnClick"
+                    VerticalAlignment="Stretch">
+                <Image Source="pack://application:,,,/Resources/Icons/close_144.png" />
             </Button>
         </Grid>
 
@@ -55,13 +66,13 @@
                         <TextBlock Grid.Column="0"
                                    Text="{Binding Time}"
                                    HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1"
                                    Text="{Binding Name}"
                                    Foreground="{Binding NameForeground}"
                                    TextDecorations="{Binding ContentDecoration}"
                                    HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center" />
                         <Button Grid.Column="2"
                                 Background="#00000000"
                                 BorderThickness="0"
@@ -70,7 +81,7 @@
                                 Cursor="Hand">
                             <TextBlock Text="{Binding Content}"
                                        Foreground="{Binding ContentForeground}"
-                                       TextDecorations="{Binding ContentDecoration}"/>
+                                       TextDecorations="{Binding ContentDecoration}" />
                         </Button>
                     </Grid>
                 </DataTemplate>
@@ -84,8 +95,12 @@
                 <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Name="_btnStartCrawling" Click="_btnStartCrawling_OnClick">시작</Button>
-            <Button Grid.Column="1" Name="_btnStopCrawling" Click="_btnStopCrawling_OnClick">중지</Button>
+            <Button Grid.Column="0"
+                    Name="_btnStartCrawling"
+                    Click="_btnStartCrawling_OnClick">시작</Button>
+            <Button Grid.Column="1"
+                    Name="_btnStopCrawling"
+                    Click="_btnStopCrawling_OnClick">중지</Button>
         </Grid>
 
         <!-- 3 -->
@@ -103,7 +118,7 @@
                         <ListView Name="_livDCCrawlList"
                                   MouseDoubleClick="CrawlList_OnMouseDoubleClick"
                                   SelectionChanged="CrawlList_OnSelectionChanged"
-                                  Height="150"/>
+                                  Height="150" />
 
                         <!-- 크롤링 기능 -->
                         <Grid Height="60">
@@ -143,7 +158,7 @@
                                      Grid.Column="1"
                                      Text="1"
                                      PreviewTextInput="Number_PreviewTextInput"
-                                     Name="_tbDCCrawlPage"/>
+                                     Name="_tbDCCrawlPage" />
                         </Grid>
                     </StackPanel>
                 </TabItem>
@@ -202,10 +217,10 @@
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center" />
                             <TextBox Grid.Row="1"
-                                     Grid.Column="1" 
+                                     Grid.Column="1"
                                      Text="1"
                                      PreviewTextInput="Number_PreviewTextInput"
-                                     Name="_tbFMCrawlPage"/>
+                                     Name="_tbFMCrawlPage" />
 
 
                             <CheckBox Grid.Row="2"
@@ -257,15 +272,108 @@
 
                             <TextBox Grid.Row="3"
                                      Grid.Column="1"
-                                     Name="_tbFMCrawlSearchContent"/>
+                                     Name="_tbFMCrawlSearchContent" />
                         </Grid>
                     </StackPanel>
                 </TabItem>
 
                 <TabItem Header="프로그램 설정"
                          Name="_tbiSetting">
-                    <!-- 기능 없음-->
-                    <TextBlock HorizontalAlignment="Center">아직 기능 없음</TextBlock>
+                    <StackPanel>
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      x:Name="_chkbDCCrawlEnable"
+                                      Checked="_chkbDCCrawlEnable_OnCheckedChanged"
+                                      Unchecked="_chkbDCCrawlEnable_OnCheckedChanged"
+                                      VerticalAlignment="Center">
+                            </CheckBox>
+
+                            <TextBlock Grid.Column="1"
+                                   Text="디시인사이드 크롤링 활성화"
+                                   VerticalAlignment="Center" />
+
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      x:Name="_chkbFMCrawlEnable"
+                                      Checked="_chkbFMCrawlEnable_OnCheckedChanged"
+                                      Unchecked="_chkbFMCrawlEnable_OnCheckedChanged"
+                                      VerticalAlignment="Center">
+                            </CheckBox>
+
+                            <TextBlock Grid.Column="1"
+                                   Text="에펨코리아 크롤링 활성화"
+                                   VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="30"></RowDefinition>
+                                <RowDefinition Height="30"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="0"
+                                       Text="디시인사이드 크롤 주기"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Row="0"
+                                     Grid.Column="1"
+                                     Text="5000"
+                                     PreviewTextInput="Number_PreviewTextInput"
+                                     Name="_tbDCCrawlDelay" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Text="에펨코리아 크롤 주기"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Row="1"
+                                     Grid.Column="1"
+                                     Text="5000"
+                                     PreviewTextInput="Number_PreviewTextInput"
+                                     Name="_tbFMCrawlDelay" />
+                        </Grid>
+
+                        <Button x:Name="_btnSaveSetting"
+                                Click="_btnSaveSetting_OnClicked"
+                                Content="적용 및 저장" 
+                                Height="30"/>
+
+                        <Button x:Name="_btnClearTasks"
+                                Click="_btnClearTasks_OnClicked"
+                                Content="요청 목록 초기화" 
+                                Height="30"/>
+
+                        <Button x:Name="_btnClearCompletes"
+                                Click="_btnClearCompletes_OnClicked"
+                                Content="완료 목록 초기화"
+                                Height="30" />
+
+                        <Button x:Name="_btnReloadSetting"
+                                Click="_btnReloadSetting_OnClick"
+                                Content="설정 리로드"
+                                Height="30" />
+                    </StackPanel>
                 </TabItem>
 
             </TabControl>
@@ -326,8 +434,8 @@
                            VerticalAlignment="Center"
                            HorizontalAlignment="Center" />
                 <TextBox Grid.Row="2"
-                         Grid.Column="1" 
-                         Name="_tbCrawlMatchString"/>
+                         Grid.Column="1"
+                         Name="_tbCrawlMatchString" />
 
                 <TextBlock Grid.Row="3"
                            Grid.Column="0"

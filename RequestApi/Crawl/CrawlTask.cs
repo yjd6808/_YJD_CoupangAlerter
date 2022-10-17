@@ -69,14 +69,14 @@ namespace RequestApi.Crawl
 
             _manager.Stat.RequestCount++;
             _manager.OnCrawlRequest?.Invoke(this);
-            List<CrawlResult> crawlResult = Crawl.TryCrawl();
+            List<CrawlResult> crawlResult = Crawl.TryCrawl(out string errorMessage);
             DateTime matchedTime = DateTime.Now;
             
 
             if (crawlResult == null)
             {
                 _manager.Stat.RequestFailedCount++;
-                _manager.OnCrawlFailed?.Invoke(this);
+                _manager.OnCrawlFailed?.Invoke(this, errorMessage);
                 return;
             }
 

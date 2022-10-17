@@ -43,7 +43,7 @@
             <!-- 0 -->
             <Rectangle x:Name="_recStatusBar"
                        Fill="PaleVioletRed"
-                       Margin="5, 5, 5, 5"/>
+                       Margin="5, 5, 5, 5" />
 
             <!-- 1 -->
             <Label Grid.Column="1"
@@ -187,11 +187,11 @@
                                    Text="페이지"
                                    Style="{StaticResource DefaultLabelStyle}" />
                             <Entry Grid.Row="1"
-                                    Grid.Column="1"
-                                    FontSize="Small"
-                                    Text="1"
-                                    Keyboard="Numeric"
-                                    x:Name="_tbDCCrawlPage" />
+                                   Grid.Column="1"
+                                   FontSize="Small"
+                                   Text="1"
+                                   Keyboard="Numeric"
+                                   x:Name="_tbDCCrawlPage" />
                         </Grid>
                     </StackLayout>
                 </xct:TabViewItem>
@@ -265,11 +265,11 @@
                                    Text="페이지"
                                    Style="{StaticResource DefaultLabelStyle}" />
                             <Entry Grid.Row="1"
-                                    Grid.Column="1"
-                                    Text="1"
-                                    FontSize="Small"
-                                    Keyboard="Numeric"
-                                    x:Name="_tbFMCrawlPage" />
+                                   Grid.Column="1"
+                                   Text="1"
+                                   FontSize="Small"
+                                   Keyboard="Numeric"
+                                   x:Name="_tbFMCrawlPage" />
 
 
                             <CheckBox Grid.Row="2"
@@ -315,8 +315,8 @@
                                    Style="{StaticResource DefaultLabelStyle}" />
 
                             <Entry Grid.Row="3"
-                                    Grid.Column="1"
-                                    x:Name="_tbFMCrawlSearchContent" />
+                                   Grid.Column="1"
+                                   x:Name="_tbFMCrawlSearchContent" />
                         </Grid>
                     </StackLayout>
                 </xct:TabViewItem>
@@ -369,7 +369,53 @@
                                    HorizontalOptions="Start" />
                         </Grid>
 
+                        <Grid HeightRequest="70">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
 
+                            <Label Grid.Row="0"
+                                   Grid.Column="0"
+                                   Text="디시인사이드 크롤 주기"
+                                   Style="{StaticResource DefaultLabelStyle}" />
+                            <Entry Grid.Row="0"
+                                     Grid.Column="1"
+                                     Text="15000"
+                                     FontSize="Small"
+                                     x:Name="_tbDCCrawlDelay" />
+
+                            <Label Grid.Row="1"
+                                   Grid.Column="0"
+                                   Text="에펨코리아 크롤 주기"
+                                   Style="{StaticResource DefaultLabelStyle}" />
+                            <Entry Grid.Row="1"
+                                   Grid.Column="1"
+                                   Text="15000"
+                                   FontSize="Small"
+                                   Keyboard="Numeric"
+                                   x:Name="_tbFMCrawlDelay" />
+                        </Grid>
+
+                        <Button x:Name="_btnSaveSetting"
+                                Clicked="_btnSaveSetting_OnClicked"
+                                Text="적용 및 저장"/>
+
+                        <Button x:Name="_btnClearTasks"
+                                Clicked="_btnClearTasks_OnClicked"
+                                Text="요청 목록 초기화"/>
+
+                        <Button x:Name="_btnClearCompletes"
+                                Clicked="_btnClearCompletes_OnClicked"
+                                Text="완료 목록 초기화"/>
+
+                        <Button x:Name="_btnReloadSetting"
+                                Clicked="_btnReloadSetting_OnClick"
+                                Text="설정 리로드"/>
                     </StackLayout>
                 </xct:TabViewItem>
             </xct:TabView>
@@ -457,11 +503,11 @@
                            Text="매칭 내용"
                            Style="{StaticResource DefaultLabelStyle}" />
                     <Entry Grid.Column="1"
-                            Margin="0"
-                            VerticalOptions="Center"
-                            HorizontalOptions="Fill"
-                            FontSize="Small"
-                            x:Name="_tbCrawlMatchString" />
+                           Margin="0"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Fill"
+                           FontSize="Small"
+                           x:Name="_tbCrawlMatchString" />
                 </Grid>
 
                 <Grid Grid.Row="1"
@@ -477,10 +523,10 @@
                            Text="작업 이름"
                            Style="{StaticResource DefaultLabelStyle}" />
                     <Entry Grid.Column="1"
-                            VerticalOptions="Center"
-                            HorizontalOptions="Fill"
-                            FontSize="Small"
-                            x:Name="_tbCrawlTaskName" />
+                           VerticalOptions="Center"
+                           HorizontalOptions="Fill"
+                           FontSize="Small"
+                           x:Name="_tbCrawlTaskName" />
                 </Grid>
 
             </Grid>

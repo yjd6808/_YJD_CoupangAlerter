@@ -59,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\Services\App\CloseApplication.cs" />
+    <Compile Include="Classes\Services\Network\NetConnectivityService.cs" />
     <Compile Include="Classes\Services\Notification\AlarmHandler.cs" />
     <Compile Include="Classes\Services\Notification\NotificationEventArgs.cs" />
     <Compile Include="Classes\Services\Notification\NotificationManager.cs" />

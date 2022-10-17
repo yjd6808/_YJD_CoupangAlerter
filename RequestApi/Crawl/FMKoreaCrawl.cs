@@ -9,6 +9,7 @@ using RequestApi.Crawl.Result;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Security;
 using System.Text;
@@ -154,8 +155,39 @@ namespace RequestApi.Crawl
                 if (time == null) continue;
                 if (viewCount_ == null) continue;
 
+                string postId_ = "";
+
+                NameValueCollection queryCollection = HttpUtility.ParseQueryString(url);
+                var enumerator = queryCollection.GetEnumerator();
+                bool foundId = false;
+                while (enumerator.MoveNext())
+                {
+                    string strKey = enumerator.Current as string;
+                    if (strKey == null) continue;
+                    if (strKey == "amp;document_srl")
+                    {
+                        postId_ = queryCollection.Get("amp;document_srl");
+                        foundId = true;
+                        break;
+                    }
+
+                    if (strKey == "document_srl")
+                    {
+                        postId_ = queryCollection.Get("document_srl");
+                        foundId = true;
+                        break;
+                    }
+                }
+
+                if (!foundId && url.StartsWith("/"))
+                    postId_ = url.JoinAllNumber();
+
                 long.TryParse(viewCount_, out long viewCount);
+                long.TryParse(postId_, out long postId);
                 long.TryParse(recommendCount_, out long recommendCount);
+
+                if (postId == 0)
+                    throw new Exception($"포스트 아이디를 얻을 수가 없습니다. {url}");
 
                 DateTime writeDate = DateTime.Now;
                 bool todayPost = false;
@@ -187,10 +219,10 @@ namespace RequestApi.Crawl
                 _categoryNameMap.TryGetValue(boardType_, out FMBoardType boardType);
 
                 results.Add(new FMKoreaCrawlResult(
-                    long.Parse(url.JoinAllNumber()),
+                    postId,
                     boardType,
                     todayPost,
-                    url,
+                    MainUrl + url,
                     title,
                     name,
                     writeDate,
@@ -199,7 +231,7 @@ namespace RequestApi.Crawl
                 ));
             }
 
-            return null;
+            return results;
         }
 
         public override AbstractCrawl Clone()
