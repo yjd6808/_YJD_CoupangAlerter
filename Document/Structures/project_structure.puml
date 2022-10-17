@@ -1,0 +1,12 @@
+@startuml
+
+
+rectangle 크롤링_API {
+    rectangle 윈도우_애플리케이션 {
+    }
+
+    rectangle 안드로이드_애플리케이션 {
+    }
+}
+
+@enduml

@@ -1,0 +1,29 @@
+hide empty methods
+hide empty fields
+hide circle
+allowmixing
+
+rectangle 애플리케이션 {
+    class UI쓰레드1 {
+         - 메인쓰레드
+         - 작업 요청
+    }
+}
+
+class 분배_쓰레드 {
+    각 사이트별로 크롤링 요청 분배
+}
+
+class 디시인사이드_쓰레드 {
+    디시인사이드 크롤링 요청만 수행
+}
+
+class 에펨코리아_쓰레드 {
+    에펨코리아 크롤링 요청만 수행
+}
+
+
+분배_쓰레드 --> 디시인사이드_쓰레드
+분배_쓰레드 --> 에펨코리아_쓰레드
+
+UI쓰레드1 -d-> 분배_쓰레드

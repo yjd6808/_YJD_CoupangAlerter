@@ -15,7 +15,7 @@
                 <Setter Property="FontSize"
                         Value="Small" />
             </Style>
-            
+
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -50,7 +50,7 @@
                    x:Name="_tblStatusBar"
                    Text="정지 상태"
                    Style="{StaticResource DefaultLabelStyle}"
-                   HorizontalOptions="Start"/>
+                   HorizontalOptions="Start" />
 
             <!-- 1 -->
             <ImageButton Grid.Column="2"
@@ -79,7 +79,7 @@
 
                             <Label Grid.Column="0"
                                    Text="{Binding Time}"
-                                   Style="{StaticResource DefaultLabelStyle}"/>
+                                   Style="{StaticResource DefaultLabelStyle}" />
                             <Label Grid.Column="1"
                                    Text="{Binding Name}"
                                    Style="{StaticResource DefaultLabelStyle}"
@@ -92,7 +92,7 @@
                                    TextDecorations="{Binding ContentDecoration}" />
                         </Grid>
                     </ViewCell>
-                    
+
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
@@ -125,7 +125,6 @@
                          SelectionChanged="_tbcCrawl_OnSelectionChanged"
                          IsTabStripVisible="True"
                          TabStripHeight="20"
-                         TabContentBackgroundColor="AntiqueWhite"
                          IsSwipeEnabled="True">
                 <xct:TabViewItem x:Name="_tbiDCCrawl"
                                  Background="DarkGray"
@@ -140,7 +139,7 @@
                                   ItemTapped="CrawlList_OnItemTapped"
                                   VerticalOptions="Start"
                                   HeightRequest="150"
-                                  Background="Transparent">
+                                  Background="LightSlateGray">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <ViewCell>
@@ -210,7 +209,7 @@
                                   ItemTapped="CrawlList_OnItemTapped"
                                   HeightRequest="150"
                                   VerticalOptions="Start"
-                                  Background="Transparent">
+                                  Background="LightSlateGray">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <ViewCell>
@@ -242,7 +241,7 @@
                             <Label Grid.Row="0"
                                    Grid.Column="0"
                                    Text="카테고리"
-                                   Style="{StaticResource DefaultLabelStyle}"/>
+                                   Style="{StaticResource DefaultLabelStyle}" />
                             <Picker Grid.Row="0"
                                     Grid.Column="1"
                                     x:Name="_cbFMCrawlCategory"
@@ -264,7 +263,7 @@
                             <Label Grid.Row="1"
                                    Grid.Column="0"
                                    Text="페이지"
-                                   Style="{StaticResource DefaultLabelStyle}"/>
+                                   Style="{StaticResource DefaultLabelStyle}" />
                             <Editor Grid.Row="1"
                                     Grid.Column="1"
                                     Text="1"
@@ -329,7 +328,47 @@
                                  TextColorSelected="AliceBlue"
                                  FontAttributes="Bold"
                                  FontSize="16">
-                    <Grid></Grid>
+                    <StackLayout Padding="10, 0, 0, 0"
+                                 Spacing="0"
+                                 VerticalOptions="StartAndExpand">
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      x:Name="_chkbDCCrawlEnable"
+                                      CheckedChanged="_chkbDCCrawlEnable_OnCheckedChanged"
+                                      VerticalOptions="Center">
+                            </CheckBox>
+
+                            <Label Grid.Column="1"
+                                   Text="디시인사이드 크롤링 활성화"
+                                   Style="{StaticResource DefaultLabelStyle}"
+                                   HorizontalOptions="Start" />
+
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      x:Name="_chkbFMCrawlEnable"
+                                      CheckedChanged="_chkbFMCrawlEnable_OnCheckedChanged"
+                                      VerticalOptions="Center">
+                            </CheckBox>
+
+                            <Label Grid.Column="1"
+                                   Text="에펨코리아 크롤링 활성화"
+                                   Style="{StaticResource DefaultLabelStyle}"
+                                   HorizontalOptions="Start" />
+                        </Grid>
+                    </StackLayout>
                 </xct:TabViewItem>
             </xct:TabView>
 
@@ -386,7 +425,7 @@
 
                     <Label Grid.Column="0"
                            Text="문자열 체크"
-                           Style="{StaticResource DefaultLabelStyle}"/>
+                           Style="{StaticResource DefaultLabelStyle}" />
 
                     <Picker Grid.Column="1"
                             x:Name="_cbCrawlStringMatchRule"
@@ -414,7 +453,7 @@
 
                     <Label Grid.Column="0"
                            Text="매칭 내용"
-                           Style="{StaticResource DefaultLabelStyle}"/>
+                           Style="{StaticResource DefaultLabelStyle}" />
                     <Editor Grid.Column="1"
                             Margin="0"
                             VerticalOptions="Center"
@@ -447,7 +486,6 @@
             <Grid x:Name="_gridCrawllistManipulationContainer"
                   HeightRequest="40"
                   RowSpacing="0"
-                  
                   ColumnSpacing="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"></ColumnDefinition>

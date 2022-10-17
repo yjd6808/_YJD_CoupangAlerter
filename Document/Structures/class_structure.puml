@@ -1,0 +1,64 @@
+hide empty methods
+hide empty fields
+allowmixing
+
+
+
+
+
+
+
+
+
+rectangle 안드로이드_애플리케이션
+rectangle 윈도우_애플리케이션
+rectangle 크롤링_API {
+
+    class CrawlTaskManager {
+    1. 크롤링 관련 설정 추가/제거 등 기능
+    2. 크롤링 작업 목록 관리
+}
+
+    abstract class AbstractCrawl {
+        크롤링 요청
+        ---
+         - HTTP Request 수행
+         - HTTP Response 파싱
+    }
+    class DCInsdeCrawl 
+    class FMKoreaCrawl 
+
+    class CrawlTask {
+        클라이언트가 요청하는 작업 정보
+    }
+
+    class CrawlResult {
+        크롤링 결과
+        ---
+         - 게시글 번호
+         - 작성자 닉네임
+         - 글쓴 시각
+    }
+
+    class FMCrawlResult
+    class DCCrawlResult
+}
+
+
+DCInsdeCrawl -u-|> AbstractCrawl
+FMKoreaCrawl -u-|> AbstractCrawl
+CrawlTask --> AbstractCrawl
+CrawlTaskManager *-d-> CrawlTask
+
+FMCrawlResult -u-|> CrawlResult
+DCCrawlResult -u-|> CrawlResult
+
+CrawlTask --> CrawlResult
+MatchedCrawlResult ..> CrawlResult
+
+안드로이드_애플리케이션 "요청"---> CrawlTaskManager
+윈도우_애플리케이션 "요청"---> CrawlTaskManager
+
+
+
+

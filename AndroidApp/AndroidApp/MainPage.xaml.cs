@@ -521,6 +521,18 @@ namespace AndroidApp
                 UpdateDCCrawlTaskUI(_selectedCrawlTask);
             else if (_selectedCrawlTask.CrawlType == CrawlType.FMKorea)
                 UpdateFMCrawlTaskUI(_selectedCrawlTask);
+            
+        }
+
+        private void _chkbDCCrawlEnable_OnCheckedChanged(object sender, CheckedChangedEventArgs e)
+        {
+            _crawlTaskManager.BlockedCrawl[0] = true;
+            _crawlTaskManager.SaveTaskFile();
+        }
+
+        private void _chkbFMCrawlEnable_OnCheckedChanged(object sender, CheckedChangedEventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 }
