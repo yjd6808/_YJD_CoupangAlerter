@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace AndroidApp.Classes.Notification
+namespace AndroidApp.Classes.Services.Notification
 {
     public class NotificationEventArgs : EventArgs
     {

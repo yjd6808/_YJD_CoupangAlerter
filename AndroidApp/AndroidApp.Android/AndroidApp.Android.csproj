@@ -58,9 +58,10 @@
     <PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\Notification\AlarmHandler.cs" />
-    <Compile Include="Classes\Notification\NotificationEventArgs.cs" />
-    <Compile Include="Classes\Notification\NotificationManager.cs" />
+    <Compile Include="Classes\Services\App\CloseApplication.cs" />
+    <Compile Include="Classes\Services\Notification\AlarmHandler.cs" />
+    <Compile Include="Classes\Services\Notification\NotificationEventArgs.cs" />
+    <Compile Include="Classes\Services\Notification\NotificationManager.cs" />
     <Compile Include="MainActivity.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -86,14 +87,15 @@
     <AndroidResource Include="Resources\mipmap-xxxhdpi\icon.png" />
     <AndroidResource Include="Resources\mipmap-xxxhdpi\launcher_foreground.png" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Resources\drawable\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\AndroidApp\AndroidApp.csproj">
       <Project>{FBF2EFCD-B951-4141-A791-4665914B1C85}</Project>
       <Name>AndroidApp</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidResource Include="Resources\drawable\close_144.png" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
 </Project>

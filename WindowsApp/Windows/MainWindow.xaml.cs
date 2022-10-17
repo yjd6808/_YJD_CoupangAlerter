@@ -55,6 +55,7 @@ namespace WindowsApp.Windows
 
         public MainWindow()
         {
+            _crawlTaskManager.SetConfigDirectory(System.IO.Path.Combine(Environment.CurrentDirectory, "config"));
             _crawlTaskManager.TryLoadTaskFile();
             _crawlTaskManager.TryLoadCompleteFile();
             _crawlTaskManager.OnCrawlRequest += OnCrawlRequest;
@@ -161,10 +162,6 @@ namespace WindowsApp.Windows
         }
 
 
-        private void SetEnableListManipulationUIContainer(bool enable)
-        {
-            _gridCrawllistManipulationContainer.IsEnabled = enable;
-        }
 
         private void SetVisibilityManipulationUIContainer(bool visible)
         {
@@ -176,10 +173,6 @@ namespace WindowsApp.Windows
                 _gridCrawllistManipulationContainer.Height = 0;
         }
 
-        private void SetEnableCommonTaskOptionUIContainer(bool enable)
-        {
-            _gridCommonTaskOption.IsEnabled = enable;
-        }
 
         private void SetVisibilityCommonTaskOptionUIContainer(bool visible)
         {
@@ -464,6 +457,24 @@ namespace WindowsApp.Windows
         private void _btnCrawlAdd_Click(object sender, RoutedEventArgs e)
         {
             AddOrModifyTask(null);
+            UpdateCrawlTaskList();
+        }
+        private void _btnCrawlRemove_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedCrawlTask == null)
+                return;
+
+            _crawlTaskManager.Unregister(_selectedCrawlTask);
+            UpdateCrawlTaskList();
+        }
+
+        private void _btnCrawlModify_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedCrawlTask == null)
+                return;
+
+            AddOrModifyTask(_selectedCrawlTask);
+            UpdateCrawlTaskList();
         }
 
         private void AddOrModifyTask(CrawlTask? modifyTask)
@@ -512,8 +523,6 @@ namespace WindowsApp.Windows
                     _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
                 else
                     _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, boardType, page);
-
-                UpdateCrawlTaskList();
             }
             else if (_selectedTabItem[CrawlType.FMKorea])
             {
@@ -534,25 +543,7 @@ namespace WindowsApp.Windows
                     _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
                 else
                     _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, 30, searchOption, searchContent, boardType, page);
-                UpdateCrawlTaskList();
             }
-        }
-
-        private void _btnCrawlRemove_Click(object sender, RoutedEventArgs e)
-        {
-            if (_selectedCrawlTask == null)
-                return;
-
-            _crawlTaskManager.Unregister(_selectedCrawlTask);
-            UpdateCrawlTaskList();
-        }
-
-        private void _btnCrawlModify_Click(object sender, RoutedEventArgs e)
-        {
-            if (_selectedCrawlTask == null)
-                return;
-
-            AddOrModifyTask(_selectedCrawlTask);
         }
     }
 }

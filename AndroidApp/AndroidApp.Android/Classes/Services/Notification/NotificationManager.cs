@@ -7,16 +7,12 @@ using Android.App;
 using Android.Content;
 using Android.Graphics;
 using Android.OS;
-using AndroidApp.Classes.Notification;
-using AndroidApp.Droid.Classes.Notification;
+using AndroidApp.Classes.Services.Notification;
 using AndroidApp.Droid;
 using AndroidX.Core.App;
-using Xamarin.Forms;
-using Application = Android.App.Application;
-using NotificationEventArgs = AndroidApp.Droid.Classes.Notification.NotificationEventArgs;
 
-[assembly: Dependency(typeof(LocalNotifications.Droid.AndroidNotificationManager))]
-namespace LocalNotifications.Droid
+[assembly: Xamarin.Forms.Dependency(typeof(AndroidApp.Droid.Classes.Services.Notification.AndroidNotificationManager))]
+namespace AndroidApp.Droid.Classes.Services.Notification
 {
     public class AndroidNotificationManager : INotificationManager
     {
@@ -98,13 +94,13 @@ namespace LocalNotifications.Droid
                 .SetSmallIcon(Resource.Drawable.abc_scrubber_control_off_mtrl_alpha)
                 .SetDefaults((int)NotificationDefaults.Sound | (int)NotificationDefaults.Vibrate);
 
-            Notification notification = builder.Build();
+            Android.App.Notification notification = builder.Build();
             manager.Notify(messageId++, notification);
         }
 
         void CreateNotificationChannel()
         {
-            manager = (NotificationManager)Application.Context.GetSystemService(Application.NotificationService);
+            manager = (NotificationManager)Application.Context.GetSystemService(Context.NotificationService);
 
             if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
             {

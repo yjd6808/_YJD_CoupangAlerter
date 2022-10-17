@@ -74,9 +74,9 @@ namespace RequestApi.Crawl
         public CrawlSuccess OnCrawlSuccess;
         public CrawlMatched OnCrawlMatched;
 
-        private static readonly string s_configDirName = "config";
-        private static readonly string s_taskFileName = "tasks.json";             // 현재 진행중인 작업 저장용
-        private static readonly string s_completeFileName = "today.json";         // 중복 검출 방지를 위한 목록 (저장 기간 1일)
+        private string s_configDirName = null;
+        private readonly string s_taskFileName = "tasks.json";             // 현재 진행중인 작업 저장용
+        private readonly string s_completeFileName = "today.json";         // 중복 검출 방지를 위한 목록 (저장 기간 1일)
 
         public CrawlTaskManager()
         {
@@ -89,8 +89,8 @@ namespace RequestApi.Crawl
             _blockedCrawl[CrawlType.DCInside] = false;
 
             _crawlDelay = new int[CrawlType.Max];
-            _crawlDelay[CrawlType.FMKorea] = 200;
-            _crawlDelay[CrawlType.DCInside] = 200;
+            _crawlDelay[CrawlType.FMKorea] = 300;
+            _crawlDelay[CrawlType.DCInside] = 300;
             _crawlList = new List<CrawlTask>();
             _completedResults = new List<MatchedCrawlResult>();
 
@@ -125,8 +125,16 @@ namespace RequestApi.Crawl
             };
         }
 
+        public void SetConfigDirectory(string path)
+        {
+            s_configDirName = path;
+        }
+
         public void Start()
         {
+            if (s_configDirName == null)
+                throw new Exception("설정 파일 저장 위치가 설정되지 않았습니다.");
+
             if (Running)
                 return;
 

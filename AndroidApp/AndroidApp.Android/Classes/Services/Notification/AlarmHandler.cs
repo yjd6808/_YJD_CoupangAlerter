@@ -1,16 +1,6 @@
-﻿using Android.App;
-using Android.Content;
-using Android.OS;
-using Android.Runtime;
-using Android.Views;
-using Android.Widget;
-using LocalNotifications.Droid;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Android.Content;
 
-namespace AndroidApp.Droid.Classes.Notification
+namespace AndroidApp.Droid.Classes.Services.Notification
 {
     [BroadcastReceiver(Enabled = true, Label = "Local Notifications Broadcast Receiver")]
     public class AlarmHandler : BroadcastReceiver

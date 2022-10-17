@@ -5,15 +5,15 @@ using Android.Content;
 using Android.Content.PM;
 using Android.Runtime;
 using Android.OS;
-using AndroidApp.Classes.Notification;
+using AndroidApp.Classes.Services.App;
 using Java.Lang;
-using LocalNotifications.Droid;
-using AndroidApp.Droid.Classes.Notification;
+using AndroidApp.Droid.Classes.Services.Notification;
 using Xamarin.Forms;
+using AndroidApp.Classes.Services.Notification;
 
 namespace AndroidApp.Droid
 {
-   
+
 
     [Activity(Label = "AndroidApp", Icon = "@mipmap/icon", Theme = "@style/MainTheme", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize )]
     public class MainActivity : global::Xamarin.Forms.Platform.Android.FormsAppCompatActivity
@@ -29,6 +29,7 @@ namespace AndroidApp.Droid
             Xamarin.Essentials.Platform.Init(this, savedInstanceState);
             global::Xamarin.Forms.Forms.Init(this, savedInstanceState);
             LoadApplication(new App());
+
         }
 
         public override void OnRequestPermissionsResult(int requestCode, string[] permissions, [GeneratedEnum] Android.Content.PM.Permission[] grantResults)

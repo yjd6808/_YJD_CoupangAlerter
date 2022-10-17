@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace AndroidApp.Droid.Classes.Notification
+namespace AndroidApp.Droid.Classes.Services.Notification
 {
     public class NotificationEventArgs : EventArgs
     {

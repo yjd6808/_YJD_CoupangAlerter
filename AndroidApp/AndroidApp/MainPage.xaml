@@ -1,39 +1,476 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="AndroidApp.MainPage">
+             x:Class="AndroidApp.MainPage"
+             xmlns:local="clr-namespace:AndroidApp;assembly=AndroidApp"
+             xmlns:xct="http://xamarin.com/schemas/2020/toolkit">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Style x:Key="DefaultLabelStyle"
+                   TargetType="Label">
+                <Setter Property="HorizontalOptions"
+                        Value="Center" />
+                <Setter Property="VerticalOptions"
+                        Value="CenterAndExpand" />
+                <Setter Property="FontSize"
+                        Value="Small" />
+            </Style>
+            
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
-    <StackLayout x:Name="StackLayoutMain">
-        <Grid Margin="10">
+    <Grid ColumnSpacing="0"
+          RowSpacing="0"
+          Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="150"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <!-- 0 -->
+        <Grid Grid.Row="0"
+              ColumnSpacing="0"
+              Padding="0"
+              RowSpacing="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100"></ColumnDefinition>
+                <ColumnDefinition Width="30"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="40"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <!-- 0 -->
+            <Rectangle x:Name="_recStatusBar"
+                       Fill="PaleVioletRed"
+                       Margin="5, 5, 5, 5"></Rectangle>
+
+            <!-- 1 -->
+            <Label Grid.Column="1"
+                   x:Name="_tblStatusBar"
+                   Text="정지 상태"
+                   Style="{StaticResource DefaultLabelStyle}"
+                   HorizontalOptions="Start"/>
+
+            <!-- 1 -->
+            <ImageButton Grid.Column="2"
+                         x:Name="_btnClose"
+                         Clicked="_btnClose_OnClicked"
+                         BorderColor="Transparent"
+                         BackgroundColor="Transparent"
+                         VerticalOptions="Fill"
+                         Source="close_144.png"
+                         Aspect="AspectFit" />
+        </Grid>
+
+        <ListView Grid.Row="1"
+                  x:Name="_livLog"
+                  ItemTapped="_livLog_OnItemTapped">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <Grid RowSpacing="0"
+                              ColumnSpacing="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="75"></ColumnDefinition>
+                                <ColumnDefinition Width="100"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Column="0"
+                                   Text="{Binding Time}"
+                                   Style="{StaticResource DefaultLabelStyle}"/>
+                            <Label Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   Style="{StaticResource DefaultLabelStyle}"
+                                   TextColor="{Binding NameForeground}"
+                                   TextDecorations="{Binding NameDecoration}" />
+                            <Label Grid.Column="2"
+                                   Style="{StaticResource DefaultLabelStyle}"
+                                   Text="{Binding Content}"
+                                   TextColor="{Binding ContentForeground}"
+                                   TextDecorations="{Binding ContentDecoration}" />
+                        </Grid>
+                    </ViewCell>
+                    
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- 2 -->
+        <Grid Grid.Row="2"
+              ColumnSpacing="0"
+              RowSpacing="0"
+              Padding="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
                 <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
 
-            <Label Grid.Column="0"
-                   HorizontalTextAlignment="Center"
-                   VerticalTextAlignment="Center"
-                   Text="알림 범위"
-                   FontSize="24">
-            </Label>
-            <Entry Grid.Column="1"
-                   Keyboard="Numeric"
-                   Text="5">
-            </Entry>
-
+            <Button Grid.Column="0"
+                    x:Name="_btnStartCrawling"
+                    Clicked="_btnStartCrawling_OnClick"
+                    FontAttributes="Bold"
+                    Text="시작" />
+            <Button Grid.Column="1"
+                    x:Name="_btnStopCrawling"
+                    FontAttributes="Bold"
+                    Clicked="_btnStopCrawling_OnClick"
+                    Text="중지" />
         </Grid>
 
-        <Button Text="Create Notification"
-                HorizontalOptions="Center"
-                VerticalOptions="Start"
-                Clicked="OnSendClick" />
-        <Label Text="Click the button below to schedule a local notification for in 10 seconds time."
-               TextColor="Red"
-               HorizontalOptions="Center"
-               VerticalOptions="Start" />
-        <Button Text="Create Notification"
-                HorizontalOptions="Center"
-                VerticalOptions="Start"
-                Clicked="OnScheduleClick" />
-    </StackLayout>
+        <!-- 3 -->
+        <StackLayout Grid.Row="3">
+            <xct:TabView x:Name="_tbcCrawl"
+                         SelectionChanged="_tbcCrawl_OnSelectionChanged"
+                         IsTabStripVisible="True"
+                         TabStripHeight="20"
+                         TabContentBackgroundColor="AntiqueWhite"
+                         IsSwipeEnabled="True">
+                <xct:TabViewItem x:Name="_tbiDCCrawl"
+                                 Background="DarkGray"
+                                 Text="디시인사이드"
+                                 TextColor="White"
+                                 IsSelected="True"
+                                 TextColorSelected="AliceBlue"
+                                 FontAttributes="Bold"
+                                 FontSize="16">
+                    <StackLayout Spacing="0">
+                        <ListView x:Name="_livDCCrawlList"
+                                  ItemTapped="CrawlList_OnItemTapped"
+                                  VerticalOptions="Start"
+                                  HeightRequest="150"
+                                  Background="Transparent">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <ViewCell>
+                                        <Grid>
+                                            <Label Style="{StaticResource DefaultLabelStyle}"
+                                                   Text="{Binding TaskName}" />
+                                        </Grid>
+                                    </ViewCell>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!-- 크롤링 기능 -->
+                        <Grid RowSpacing="0"
+                              ColumnSpacing="0"
+                              VerticalOptions="Start">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Row="0"
+                                   Grid.Column="0"
+                                   Text="카테고리"
+                                   FontSize="Small"
+                                   Style="{StaticResource DefaultLabelStyle}" />
+                            <Picker Grid.Row="0"
+                                    Grid.Column="1"
+                                    x:Name="_cbDCCrawlCategory"
+                                    FontSize="Small"
+                                    SelectedIndex="0">
+                                <Picker.Items>
+                                    <x:String>전체글</x:String>
+                                    <x:String>개념글</x:String>
+                                </Picker.Items>
+                            </Picker>
+
+                            <Label Grid.Row="1"
+                                   Grid.Column="0"
+                                   Text="페이지"
+                                   Style="{StaticResource DefaultLabelStyle}" />
+                            <Editor Grid.Row="1"
+                                    Grid.Column="1"
+                                    FontSize="Small"
+                                    Text="1"
+                                    Keyboard="Numeric"
+                                    x:Name="_tbDCCrawlPage" />
+                        </Grid>
+                    </StackLayout>
+                </xct:TabViewItem>
+
+                <xct:TabViewItem x:Name="_tbiFMCrawl"
+                                 Background="DarkGray"
+                                 Text="에펨코리아"
+                                 TextColor="White"
+                                 TextColorSelected="AliceBlue"
+                                 FontAttributes="Bold"
+                                 FontSize="16">
+                    <StackLayout Padding="0"
+                                 Spacing="0">
+                        <ListView x:Name="_livFMCrawlList"
+                                  ItemTapped="CrawlList_OnItemTapped"
+                                  HeightRequest="150"
+                                  VerticalOptions="Start"
+                                  Background="Transparent">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <ViewCell>
+                                        <Grid>
+                                            <Label Style="{StaticResource DefaultLabelStyle}"
+                                                   Text="{Binding TaskName}" />
+                                        </Grid>
+                                    </ViewCell>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!-- 크롤링 기능 -->
+                        <Grid RowSpacing="0"
+                              ColumnSpacing="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+
+                            <Label Grid.Row="0"
+                                   Grid.Column="0"
+                                   Text="카테고리"
+                                   Style="{StaticResource DefaultLabelStyle}"/>
+                            <Picker Grid.Row="0"
+                                    Grid.Column="1"
+                                    x:Name="_cbFMCrawlCategory"
+                                    FontSize="Small"
+                                    SelectedIndex="0">
+                                <Picker.Items>
+                                    <x:String>전체</x:String>
+                                    <x:String>인기</x:String>
+                                    <x:String>잡담</x:String>
+                                    <x:String>국내주식</x:String>
+                                    <x:String>해외주식</x:String>
+                                    <x:String>질문</x:String>
+                                    <x:String>종목추천 분석</x:String>
+                                    <x:String>정보 공유</x:String>
+                                    <x:String>이벤트</x:String>
+                                </Picker.Items>
+                            </Picker>
+
+                            <Label Grid.Row="1"
+                                   Grid.Column="0"
+                                   Text="페이지"
+                                   Style="{StaticResource DefaultLabelStyle}"/>
+                            <Editor Grid.Row="1"
+                                    Grid.Column="1"
+                                    Text="1"
+                                    FontSize="Small"
+                                    Keyboard="Numeric"
+                                    x:Name="_tbFMCrawlPage" />
+
+
+                            <CheckBox Grid.Row="2"
+                                      Grid.Column="0"
+                                      x:Name="_chkbFMCrawlSearchOptionEnable"
+                                      CheckedChanged="_chkbFMCrawlSearchOptionEnable_CheckedChanged"
+                                      VerticalOptions="Center">
+                            </CheckBox>
+
+                            <Label Grid.Row="2"
+                                   Grid.Column="0"
+                                   x:Name="_tblbFMCrawlSearchOption"
+                                   Text="검색 타입"
+                                   FontSize="Small"
+                                   Margin="15, 0, 0, 0"
+                                   Style="{StaticResource DefaultLabelStyle}" />
+
+                            <Picker Grid.Row="2"
+                                    Grid.Column="1"
+                                    x:Name="_cbFMCrawlSearchOption"
+                                    FontSize="Small"
+                                    SelectedIndex="0">
+                                <Picker.Items>
+                                    <x:String>닉네임</x:String>
+                                    <x:String>제목 + 내용</x:String>
+                                    <x:String>제목</x:String>
+                                    <x:String>내용</x:String>
+                                    <x:String>댓글</x:String>
+                                </Picker.Items>
+                            </Picker>
+
+                            <CheckBox Grid.Row="3"
+                                      Grid.Column="0"
+                                      VerticalOptions="Center"
+                                      x:Name="_chkbFMCrawlSearchContentEnable"
+                                      CheckedChanged="_chkbFMCrawlSearchContentEnable_CheckedChanged" />
+
+                            <Label Grid.Row="3"
+                                   Grid.Column="0"
+                                   x:Name="_tblbFMCrawlSearchContent"
+                                   Text="검색 내용"
+                                   Margin="15, 0, 0, 0"
+                                   Style="{StaticResource DefaultLabelStyle}" />
+
+                            <Editor Grid.Row="3"
+                                    Grid.Column="1"
+                                    x:Name="_tbFMCrawlSearchContent" />
+                        </Grid>
+                    </StackLayout>
+                </xct:TabViewItem>
+
+                <xct:TabViewItem x:Name="_tbiSetting"
+                                 Background="DarkGray"
+                                 Text="설정"
+                                 TextColor="White"
+                                 TextColorSelected="AliceBlue"
+                                 FontAttributes="Bold"
+                                 FontSize="16">
+                    <Grid></Grid>
+                </xct:TabViewItem>
+            </xct:TabView>
+
+            <!-- 크롤링 기능 -->
+            <Grid x:Name="_gridCommonTaskOption"
+                  HeightRequest="90"
+                  VerticalOptions="Start"
+                  RowSpacing="0"
+                  ColumnSpacing="0">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="*"></RowDefinition>
+                </Grid.RowDefinitions>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Row="0"
+                      Grid.Column="0"
+                      RowSpacing="0"
+                      ColumnSpacing="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Column="0"
+                           Text="매칭 타입"
+                           Style="{StaticResource DefaultLabelStyle}" />
+                    <Picker Grid.Column="1"
+                            x:Name="_cbCrawlMatchType"
+                            VerticalOptions="Start"
+                            FontSize="Small"
+                            SelectedIndex="0">
+                        <Picker.Items>
+                            <x:String>제목</x:String>
+                            <x:String>닉네임</x:String>
+                        </Picker.Items>
+
+                    </Picker>
+                </Grid>
+
+                <Grid Grid.Row="0"
+                      Grid.Column="1"
+                      RowSpacing="0"
+                      ColumnSpacing="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Column="0"
+                           Text="문자열 체크"
+                           Style="{StaticResource DefaultLabelStyle}"/>
+
+                    <Picker Grid.Column="1"
+                            x:Name="_cbCrawlStringMatchRule"
+                            FontSize="Small"
+                            VerticalOptions="Center"
+                            HorizontalOptions="Fill"
+                            SelectedIndex="0">
+                        <Picker.Items>
+                            <x:String>일부 포함</x:String>
+                            <x:String>완전 일치</x:String>
+                        </Picker.Items>
+                    </Picker>
+
+                </Grid>
+
+
+                <Grid Grid.Row="1"
+                      Grid.Column="0"
+                      RowSpacing="0"
+                      ColumnSpacing="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Column="0"
+                           Text="매칭 내용"
+                           Style="{StaticResource DefaultLabelStyle}"/>
+                    <Editor Grid.Column="1"
+                            Margin="0"
+                            VerticalOptions="Center"
+                            HorizontalOptions="Fill"
+                            FontSize="Small"
+                            x:Name="_tbCrawlMatchString" />
+                </Grid>
+
+                <Grid Grid.Row="1"
+                      Grid.Column="1"
+                      RowSpacing="0"
+                      ColumnSpacing="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Column="0"
+                           Text="작업 이름"
+                           Style="{StaticResource DefaultLabelStyle}" />
+                    <Editor Grid.Column="1"
+                            VerticalOptions="Center"
+                            HorizontalOptions="Fill"
+                            FontSize="Small"
+                            x:Name="_tbCrawlTaskName" />
+                </Grid>
+
+            </Grid>
+
+            <Grid x:Name="_gridCrawllistManipulationContainer"
+                  HeightRequest="40"
+                  RowSpacing="0"
+                  
+                  ColumnSpacing="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="2*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="_btnCrawlRemove"
+                        Grid.Column="0"
+                        IsEnabled="False"
+                        Text="선택 제거"
+                        Clicked="_btnCrawlRemove_Click" />
+                <Button x:Name="_btnCrawlModify"
+                        Grid.Column="1"
+                        IsEnabled="False"
+                        Text="선택 수정"
+                        Clicked="_btnCrawlModify_Click" />
+                <Button x:Name="_btnCrawlAdd"
+                        Grid.Column="2"
+                        IsEnabled="False"
+                        Text="추가"
+                        Clicked="_btnCrawlAdd_Click" />
+            </Grid>
+        </StackLayout>
+    </Grid>
 </ContentPage>
