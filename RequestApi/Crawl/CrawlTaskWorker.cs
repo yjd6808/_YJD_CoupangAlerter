@@ -22,24 +22,24 @@ namespace RequestApi.Crawl
         private readonly int _crawlType;
         
         private volatile bool _running;
+        private volatile bool _finished;
 
         private int _delay;
 
         public AutoResetEvent Waitor { get; }
-        public AutoResetEvent Signal { get; }
 
 
         private readonly LinkedList<CrawlTask> _taskQueue;
 
-        public CrawlTaskWorker(int delay, AutoResetEvent waitor, AutoResetEvent signal, int crawlType)
+        public CrawlTaskWorker(int delay, AutoResetEvent waitor, int crawlType)
         {
             _taskQueue = new LinkedList<CrawlTask>();
             _running = false;
+            _finished = false;
             _delay = delay;
             _crawlType = crawlType;
 
             Waitor = waitor;
-            Signal = signal;
         }
 
         public void Start()
@@ -62,8 +62,23 @@ namespace RequestApi.Crawl
             if (!_running) throw new Exception("시작되지 않았습니다.");
             _running = false;
             Waitor.Set();               // 쓰레드 쉬는 장소 (1)에서 자고 이쓴 상태를 강제로 깨우기 위함
-            lock (this)                 // 쓰레드 쉬는 장소 (2)에서 자고 있는 상태를 강제로 깨우기 위함
-                Monitor.Pulse(this);
+
+            // 쓰레드 쉬는 장소 (2)에서 자고 있는 상태를 강제로 깨우기 위함
+            // 분배 쓰레드가 빨리 종료되면서 아직 끝나지 않은 워커쓰레드를 종료시켜주기 위한 반복문임
+            while (true)
+            {
+                lock (this)
+                {
+                    Monitor.Pulse(this);
+
+                    if (_finished)
+                        break;
+                }
+
+                Thread.Sleep(10);
+            }
+
+            
             _workerThread.Join();
         }
 
@@ -88,6 +103,14 @@ namespace RequestApi.Crawl
             lock (this)
             {
                 _taskQueue.Remove(task);
+            }
+        }
+
+        public bool Empty()
+        {
+            lock (this)
+            {
+                return _taskQueue.Count == 0;
             }
         }
 
@@ -143,8 +166,9 @@ namespace RequestApi.Crawl
                 finally
                 {
                     // 작업을 마치면 CrawlTaskManager로 시그널을 보내줘서 작업이 완료됬음을 알려준다.
-                    Signal.Set();
+                    _finished = true;
                     Monitor.Exit(this);
+                    Debug.WriteLine($"[작업 쓰레드({CrawlType.ToString(_crawlType)}, {Thread.CurrentThread.ManagedThreadId})가 종료되었습니다.]");
                 }
             }
         }

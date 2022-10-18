@@ -58,28 +58,38 @@
                 <DataTemplate>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"></ColumnDefinition>
-                            <ColumnDefinition Width="100"></ColumnDefinition>
+                            <ColumnDefinition Width="60"></ColumnDefinition>
+                            <ColumnDefinition Width="30"></ColumnDefinition>
+                            <ColumnDefinition Width="50"></ColumnDefinition>
                             <ColumnDefinition Width="*"></ColumnDefinition>
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Column="0"
                                    Text="{Binding Time}"
                                    HorizontalAlignment="Center"
+                                   FontSize="12"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding CrawlType}"
+                                   HorizontalAlignment="Center"
+                                   FontSize="12"
                                    VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1"
                                    Text="{Binding Name}"
                                    Foreground="{Binding NameForeground}"
                                    TextDecorations="{Binding ContentDecoration}"
+                                   FontSize="12"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
-                        <Button Grid.Column="2"
+                        
+                        <Button Grid.Column="3"
                                 Background="#00000000"
                                 BorderThickness="0"
                                 HorizontalContentAlignment="Center"
                                 Click="_livLog_ItemClick"
                                 Cursor="Hand">
                             <TextBlock Text="{Binding Content}"
+                                       FontSize="12"
                                        Foreground="{Binding ContentForeground}"
                                        TextDecorations="{Binding ContentDecoration}" />
                         </Button>

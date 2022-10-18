@@ -36,6 +36,7 @@ namespace WindowsApp.Windows
         public Brush NameForeground { get; set; }
         public TextDecorationCollection NameDecoration { get; set; }
         public string Content { get; set; }
+        public string CrawlType { get; set; }
         public Brush ContentForeground { get; set; }
         public TextDecorationCollection ContentDecoration { get; set; }
         public string Url { get; set; }
@@ -52,6 +53,8 @@ namespace WindowsApp.Windows
         private SpeechSynthesizer _speechSynthesizer = new SpeechSynthesizer();
         private volatile bool _speeching = false;
 
+        private Thread th1;
+        private Thread th2;
 
         public MainWindow()
         {
@@ -67,6 +70,51 @@ namespace WindowsApp.Windows
 
             InitializeComponent();
             InitializeDefaultUIStates();
+
+            //Thread t1 = new Thread(() =>
+            //{
+            //    while (true)
+            //    {
+            //        lock (this)
+            //        {
+                        
+            //            Monitor.Wait(this);
+            //            Debug.WriteLine("t1 wake up!!");
+            //        }
+            //    }
+            //});
+
+            //Thread t2 = new Thread(() =>
+            //{
+            //    while (true)
+            //    {
+            //        Thread.Sleep(1000);
+            //        lock (this)
+            //        {
+            //            Monitor.Pulse(this);
+            //            Debug.WriteLine("t2 pulse to t1");
+            //        }
+            //    }
+            //});
+
+            //Thread t3 = new Thread(() =>
+            //{
+            //    Thread.Sleep(500);
+            //    lock (this)
+            //    {
+            //        Monitor.Pulse(this);
+            //        Debug.WriteLine("t3 pulse to t1");
+            //    }
+            //});
+            //t1.Start();
+            //t2.Start();
+            //t3.Start();
+
+            //while (true)
+            //{
+                
+            //}
+
         }
 
         private void OnCrawlRequest(CrawlTask task)
@@ -100,6 +148,8 @@ namespace WindowsApp.Windows
         private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
         {
             UpdateStatusBar();
+
+            //Dispatcher.BeginInvoke(() => AddCrawlTaskLog(crawl, crawlresult));
         }
 
         private void UpdateStatusBar()
@@ -393,12 +443,30 @@ namespace WindowsApp.Windows
             var log = new Log
             {
                 Time = DateTime.Now.ToString("HH:mm:ss"),
+                CrawlType = CrawlType.ToStringInitial(matched.Result.CrawlType),
                 Name = matched.Result.Name,
-                NameForeground = Brushes.Chartreuse,
+                NameForeground = Brushes.ForestGreen,
                 Content = matched.Result.Title,
                 ContentForeground = Brushes.DodgerBlue,
                 ContentDecoration = TextDecorations.Underline,
                 Url = matched.Result.Url
+            };
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                _livLog.Items.Add(log);
+                _livLog.ScrollIntoView(log);
+            });
+        }
+
+        private void AddCrawlTaskLog(CrawlTask task, List<CrawlResult> results)
+        {
+            var log = new Log
+            {
+                Time = DateTime.Now.ToString("HH:mm:ss"),
+                CrawlType = CrawlType.ToStringInitial(task.CrawlType),
+                Content = results.Count + " 데이터 있음",
+                ContentForeground = Brushes.Black
             };
 
             Dispatcher.BeginInvoke(() =>

@@ -62,7 +62,6 @@ namespace RequestApi.Crawl
         private readonly List<MatchedCrawlResult> _completedResults;     // 매칭된 게시글 결과들. (매칭 될 때마다 기록을 해서 중복 검출이 되지 않도록 막아준다.)
 
         private readonly CrawlTaskWorker[] _taskWorkers;
-        private readonly AutoResetEvent[] _taskSignals;      
         private readonly AutoResetEvent[] _taskWaitors;
 
         private volatile bool _running;
@@ -95,10 +94,6 @@ namespace RequestApi.Crawl
             _completedResults = new List<MatchedCrawlResult>();
 
             _taskWorkers = new CrawlTaskWorker[CrawlType.Max];
-            _taskSignals = new AutoResetEvent[CrawlType.Max];
-            _taskSignals[CrawlType.FMKorea] = new AutoResetEvent(false);
-            _taskSignals[CrawlType.DCInside] = new AutoResetEvent(false);
-           
 
             _taskWaitors = new AutoResetEvent[CrawlType.Max];
             _taskWaitors[CrawlType.FMKorea] = new AutoResetEvent(false);
@@ -107,14 +102,12 @@ namespace RequestApi.Crawl
             _taskWorkers[CrawlType.FMKorea] = new CrawlTaskWorker(
                 CrawlDelay[CrawlType.FMKorea],
                 _taskWaitors[CrawlType.FMKorea],
-                _taskSignals[CrawlType.FMKorea] as AutoResetEvent,
                 CrawlType.FMKorea
             );
 
             _taskWorkers[CrawlType.DCInside] = new CrawlTaskWorker(
                 CrawlDelay[CrawlType.DCInside],
                 _taskWaitors[CrawlType.DCInside],
-                _taskSignals[CrawlType.DCInside] as AutoResetEvent, 
                 CrawlType.DCInside
             );
 
@@ -141,7 +134,6 @@ namespace RequestApi.Crawl
             for (int i = 0; i < CrawlType.Max; i++)
             {
                 _taskWaitors[i].Reset();
-                _taskSignals[i].Reset();
                 _taskWorkers[i].Start();
             }
 
@@ -158,7 +150,10 @@ namespace RequestApi.Crawl
             _running = false;
 
             for (int i = 0; i < CrawlType.Max; i++)
+            {
+                _taskWorkers[i].Clear();
                 _taskWorkers[i].Stop();
+            }
 
             /*
 
@@ -498,60 +493,66 @@ namespace RequestApi.Crawl
         }
 
 
+        // 코드가 너무 보기 안좋다.
+        // 근데 로직을 아예 다 지우고 새로 작성하는거 아닌 이상 어쩔수가 없다.
         private void WorkerThread(object state)
         {
+            // 작업가능한 워커쓰레드별 상태를 나타내는 변수이다.
+            bool[] readyToWork = new bool[CrawlType.Max];
+            
             BEGIN: 
-
             while (_running)
             {
+
+                for (int i = 0; i < CrawlType.Max; i++)
+                    readyToWork[i] = _taskWorkers[i].Empty();
+
                 lock (this)
                 {
                     // 기간이 지난 이미 매칭되었던 결과물들은 주기적으로 정리해주자.
                     _completedResults.RemoveAll(result => DateTime.Now - result.MatchedTime >= ExpiredDuration);
 
+                    // 작업을 분배해줘야하는데 이미 작업을 진행중인 워커 쓰레드(readyToWork가 true)는 분배해주면 안된다.
                     foreach (var crawlTask in _crawlList)
                     {
                         if (_blockedCrawl[crawlTask.CrawlType]) continue;
+                        if (!readyToWork[crawlTask.CrawlType]) continue;
                         _taskWorkers[crawlTask.CrawlType].Add(crawlTask);
                     }
                 }
 
-                foreach (var worker in _taskWorkers)
-                    worker.Waitor.Set();
 
+                for (int i = 0; i < CrawlType.Max; i++)
+                    if (readyToWork[i])
+                        _taskWorkers[i].Waitor.Set();
 
-                int wakeUpFlag = 0;
-                int allWakedUp = CrawlType.ToFlag(CrawlType.DCInside) |     
-                                 CrawlType.ToFlag(CrawlType.FMKorea);
-
+                
                 // 쓰레드 쉬는 장소(2)에서 블로킹 상태에 있는 쓰레드들을 일정시간마다 깨워서 시간을 체크해준다.
+                // 하나의 워커 쓰레드라도 작업을 모두 완료하면 나간다.
                 for (;;)
                 {
+
                     for (int i = 0; i < CrawlType.Max; i++)
                     {
                         // 이미 Signal 핸들이 켜진 녀석은 채크할 필요가 없다.
-                        int flag = CrawlType.ToFlag(i);
-
-                        if ((wakeUpFlag & flag) == flag)
-                            continue;
-
                         var worker = _taskWorkers[i];
 
                         lock (worker)
+                        {
                             Monitor.Pulse(worker);
+                        }
 
                         Thread.Sleep(10);
 
-                        // 해당 워커 쓰레드의 크롤링 TaskQueue가 모두 비어져서 Signal 핸들이 켜진 경우
-                        if (worker.Signal.WaitOne(0))
-                            wakeUpFlag |= flag;
+                        // 하나의 워커쓰레드라도 작업을 완료하면 올라간다.
+                        if (worker.Empty())
+                            goto BEGIN;
                     }
-
-                    // 모든 워커 쓰레드가 작업이 완료된 경우
-                    if (wakeUpFlag == allWakedUp)
-                        goto BEGIN;
                 }
             }
+
+
+            Debug.WriteLine("[분배 쓰레드가 종료되었습니다.]");
         }
 
         public bool CheckAlreadyMatchedResult(CrawlResult result)

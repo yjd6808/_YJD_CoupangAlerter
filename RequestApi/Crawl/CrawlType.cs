@@ -25,6 +25,16 @@ namespace RequestApi.Crawl
             }
         }
 
+        public static string ToStringInitial(int crawlType)
+        {
+            switch (crawlType)
+            {
+                case DCInside: return "DC";
+                case FMKorea: return "FM";
+                default: throw new ArgumentException("잘못된 인자입니다.");
+            }
+        }
+
 
         public static int ToFlag(int crawlType)
         {
