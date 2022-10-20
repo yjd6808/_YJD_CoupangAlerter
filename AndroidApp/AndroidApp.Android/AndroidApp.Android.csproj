@@ -58,11 +58,14 @@
     <PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\Services\App\CloseApplication.cs" />
+    <Compile Include="Classes\Services\App\AppCloser.cs" />
+    <Compile Include="Classes\Services\App\AppInitializer.cs" />
     <Compile Include="Classes\Services\Network\NetConnectivityService.cs" />
-    <Compile Include="Classes\Services\Notification\AlarmHandler.cs" />
+    <Compile Include="Classes\Services\AlarmHandler.cs" />
     <Compile Include="Classes\Services\Notification\NotificationEventArgs.cs" />
     <Compile Include="Classes\Services\Notification\NotificationManager.cs" />
+    <Compile Include="Classes\Services\State\ForegroundService.cs" />
+    <Compile Include="Classes\Services\State\ForegroundServiceController.cs" />
     <Compile Include="MainActivity.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -90,6 +93,10 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <ProjectReference Include="..\..\RequestApi\RequestApi.csproj">
+      <Project>{23152396-7667-452E-9D2D-F7AD758697F8}</Project>
+      <Name>RequestApi</Name>
+    </ProjectReference>
     <ProjectReference Include="..\AndroidApp\AndroidApp.csproj">
       <Project>{FBF2EFCD-B951-4141-A791-4665914B1C85}</Project>
       <Name>AndroidApp</Name>

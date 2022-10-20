@@ -369,7 +369,7 @@
                                    HorizontalOptions="Start" />
                         </Grid>
 
-                        <Grid HeightRequest="70">
+                        <Grid HeightRequest="90">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*"></RowDefinition>
                                 <RowDefinition Height="*"></RowDefinition>
@@ -384,10 +384,11 @@
                                    Text="디시인사이드 크롤 주기"
                                    Style="{StaticResource DefaultLabelStyle}" />
                             <Entry Grid.Row="0"
-                                     Grid.Column="1"
-                                     Text="15000"
-                                     FontSize="Small"
-                                     x:Name="_tbDCCrawlDelay" />
+                                   Grid.Column="1"
+                                   Text="15000"
+                                   Keyboard="Numeric"
+                                   FontSize="Small"
+                                   x:Name="_tbDCCrawlDelay" />
 
                             <Label Grid.Row="1"
                                    Grid.Column="0"
@@ -403,19 +404,28 @@
 
                         <Button x:Name="_btnSaveSetting"
                                 Clicked="_btnSaveSetting_OnClicked"
-                                Text="적용 및 저장"/>
+                                Text="적용 및 저장" />
 
                         <Button x:Name="_btnClearTasks"
                                 Clicked="_btnClearTasks_OnClicked"
-                                Text="요청 목록 초기화"/>
+                                Text="요청 목록 초기화" />
 
                         <Button x:Name="_btnClearCompletes"
                                 Clicked="_btnClearCompletes_OnClicked"
-                                Text="완료 목록 초기화"/>
+                                Text="완료 목록 초기화" />
 
                         <Button x:Name="_btnReloadSetting"
                                 Clicked="_btnReloadSetting_OnClick"
-                                Text="설정 리로드"/>
+                                Text="설정 리로드" />
+
+                        <Button x:Name="_btnStartForegroundService"
+                                Clicked="_btnStartForegroundService_OnClicked"
+                                Text="포그라운드 서비스 시작" />
+
+                        <Button x:Name="_btnStopForegroundService"
+                                Clicked="_btnStopForegroundService_OnClicked"
+                                Text="포그라운드 서비스 중지" />
+
                     </StackLayout>
                 </xct:TabViewItem>
             </xct:TabView>

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using RequestApi.Crawl;
 
 namespace AndroidApp.Classes.Services.App
 {
-    public interface ICloseApplication
+    public interface IAppCloser
     {
         void Close();
     }

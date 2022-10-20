@@ -71,49 +71,7 @@ namespace WindowsApp.Windows
             InitializeComponent();
             InitializeDefaultUIStates();
 
-            //Thread t1 = new Thread(() =>
-            //{
-            //    while (true)
-            //    {
-            //        lock (this)
-            //        {
-                        
-            //            Monitor.Wait(this);
-            //            Debug.WriteLine("t1 wake up!!");
-            //        }
-            //    }
-            //});
-
-            //Thread t2 = new Thread(() =>
-            //{
-            //    while (true)
-            //    {
-            //        Thread.Sleep(1000);
-            //        lock (this)
-            //        {
-            //            Monitor.Pulse(this);
-            //            Debug.WriteLine("t2 pulse to t1");
-            //        }
-            //    }
-            //});
-
-            //Thread t3 = new Thread(() =>
-            //{
-            //    Thread.Sleep(500);
-            //    lock (this)
-            //    {
-            //        Monitor.Pulse(this);
-            //        Debug.WriteLine("t3 pulse to t1");
-            //    }
-            //});
-            //t1.Start();
-            //t2.Start();
-            //t3.Start();
-
-            //while (true)
-            //{
-                
-            //}
+           
 
         }
 
@@ -155,7 +113,6 @@ namespace WindowsApp.Windows
         private void UpdateStatusBar()
         {
             Dispatcher.BeginInvoke(() => _tblStatusBar.Text = 
-                $"요청: {_crawlTaskManager.Stat.RequestCount} " +
                 $"성공: {_crawlTaskManager.Stat.RequestSuccessCount} " +
                 $"실패: {_crawlTaskManager.Stat.RequestFailedCount} " +
                 $"매칭: {_crawlTaskManager.Stat.RequestMatchedCount}");
@@ -216,7 +173,7 @@ namespace WindowsApp.Windows
         {
             Log? log = (sender as Button)?.DataContext as Log;
             if (log == null || string.IsNullOrWhiteSpace(log.Url)) return;
-            Process.Start(log.Url);
+            Process.Start(new ProcessStartInfo(log.Url) { UseShellExecute = true });
         }
 
 
@@ -720,6 +677,25 @@ namespace WindowsApp.Windows
             _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             AddNoticeLog("설정 리로드 완료");
+        }
+
+        private void ButtonMinimize_OnClick(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = WindowState.Minimized;
+        }
+
+        private void ButtonPin_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!Topmost)
+            {
+                this.Topmost = true;
+                _imgPin.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/Icons/PinOff.ico"));
+            }
+            else
+            {
+                this.Topmost = false;
+                _imgPin.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/Icons/Pin.ico"));
+            }
         }
     }
 }

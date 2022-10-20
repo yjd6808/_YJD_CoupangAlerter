@@ -2,14 +2,13 @@
  * 레퍼런스 소스코드 : https://learn.microsoft.com/en-us/xamarin/xamarin-forms/app-fundamentals/local-notifications
  */
 
-using System;
 using Android.App;
 using Android.Content;
 using Android.Graphics;
 using Android.OS;
 using AndroidApp.Classes.Services.Notification;
-using AndroidApp.Droid;
 using AndroidX.Core.App;
+using System;
 
 [assembly: Xamarin.Forms.Dependency(typeof(AndroidApp.Droid.Classes.Services.Notification.AndroidNotificationManager))]
 namespace AndroidApp.Droid.Classes.Services.Notification
@@ -22,6 +21,7 @@ namespace AndroidApp.Droid.Classes.Services.Notification
 
         public const string TitleKey = "title";
         public const string MessageKey = "message";
+        public const string MesssageIdKey = "message";
 
         bool channelInitialized = false;
         int messageId = 0;
@@ -53,14 +53,19 @@ namespace AndroidApp.Droid.Classes.Services.Notification
 
             if (notifyTime != null)
             {
+                int msgId = messageId++;
                 Intent intent = new Intent(Application.Context, typeof(AlarmHandler));
+                intent.SetAction("notification");
                 intent.PutExtra(TitleKey, title);
                 intent.PutExtra(MessageKey, message);
+                intent.PutExtra(MesssageIdKey, msgId);
 
                 PendingIntent pendingIntent = PendingIntent.GetBroadcast(Application.Context, pendingIntentId++, intent, PendingIntentFlags.CancelCurrent);
                 long triggerTime = GetNotifyTime(notifyTime.Value);
                 AlarmManager alarmManager = Application.Context.GetSystemService(Context.AlarmService) as AlarmManager;
                 alarmManager.Set(AlarmType.RtcWakeup, triggerTime, pendingIntent);
+
+                
             }
             else
             {
@@ -80,9 +85,13 @@ namespace AndroidApp.Droid.Classes.Services.Notification
 
         public void Show(string title, string message)
         {
+            int msgId = messageId++;
             Intent intent = new Intent(Application.Context, typeof(MainActivity));
+            intent.AddFlags(ActivityFlags.ClearTop);
+            intent.SetAction("notification");
             intent.PutExtra(TitleKey, title);
             intent.PutExtra(MessageKey, message);
+            intent.PutExtra(MesssageIdKey, msgId);
 
             PendingIntent pendingIntent = PendingIntent.GetActivity(Application.Context, pendingIntentId++, intent, PendingIntentFlags.Immutable);
 
@@ -95,7 +104,7 @@ namespace AndroidApp.Droid.Classes.Services.Notification
                 .SetDefaults((int)NotificationDefaults.Sound | (int)NotificationDefaults.Vibrate);
 
             Android.App.Notification notification = builder.Build();
-            manager.Notify(messageId++, notification);
+            manager.Notify(msgId, notification);
         }
 
         void CreateNotificationChannel()

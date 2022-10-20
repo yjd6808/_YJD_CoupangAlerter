@@ -168,9 +168,12 @@ namespace RequestApi.Crawl
                     // 작업을 마치면 CrawlTaskManager로 시그널을 보내줘서 작업이 완료됬음을 알려준다.
                     _finished = true;
                     Monitor.Exit(this);
-                    Debug.WriteLine($"[작업 쓰레드({CrawlType.ToString(_crawlType)}, {Thread.CurrentThread.ManagedThreadId})가 종료되었습니다.]");
                 }
+
+                Thread.Sleep(10);
             }
+
+            Debug.WriteLine($"[작업 쓰레드({CrawlType.ToString(_crawlType)}, {Thread.CurrentThread.ManagedThreadId})가 종료되었습니다.]");
         }
     }
 }

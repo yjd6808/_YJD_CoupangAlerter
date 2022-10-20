@@ -1,17 +1,8 @@
-﻿using Android.App;
-using Android.Content;
-using Android.OS;
-using Android.Runtime;
-using Android.Views;
-using Android.Widget;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using AndroidApp.Classes.Services.Network;
-using Xamarin.Forms;
+﻿using Android.Content;
 using Android.Net;
-using Android.Net.Wifi.Aware;
+using AndroidApp.Classes.Services.Network;
+using System.Collections.Generic;
+using Xamarin.Forms;
 using Application = Android.App.Application;
 
 [assembly: Dependency(typeof(AndroidApp.Droid.Classes.Services.Network.NetConnectivityService))]
@@ -21,7 +12,7 @@ namespace AndroidApp.Droid.Classes.Services.Network
     {
         public static NetworkCapabilities Capabilities
         {
-            get 
+            get
             {
                 ConnectivityManager cm = (ConnectivityManager)Application.Context.GetSystemService(Context.ConnectivityService);
                 return cm.GetNetworkCapabilities(cm.ActiveNetwork);

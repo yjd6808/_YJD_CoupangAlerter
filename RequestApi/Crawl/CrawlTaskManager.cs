@@ -88,8 +88,8 @@ namespace RequestApi.Crawl
             _blockedCrawl[CrawlType.DCInside] = false;
 
             _crawlDelay = new int[CrawlType.Max];
-            _crawlDelay[CrawlType.FMKorea] = 5000;
-            _crawlDelay[CrawlType.DCInside] = 5000;
+            _crawlDelay[CrawlType.DCInside] = 180000;
+            _crawlDelay[CrawlType.FMKorea] = 300000;
             _crawlList = new List<CrawlTask>();
             _completedResults = new List<MatchedCrawlResult>();
 

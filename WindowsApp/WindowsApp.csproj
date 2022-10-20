@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <None Remove="Resources\Icons\close_144.png" />
+    <None Remove="Resources\Icons\minimize.png" />
+    <None Remove="Resources\Icons\Pin.ico" />
+    <None Remove="Resources\Icons\PinOff.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +24,9 @@
 
   <ItemGroup>
     <Resource Include="Resources\Icons\close_144.png" />
+    <Resource Include="Resources\Icons\minimize.png" />
+    <Resource Include="Resources\Icons\Pin.ico" />
+    <Resource Include="Resources\Icons\PinOff.ico" />
   </ItemGroup>
 
 </Project>

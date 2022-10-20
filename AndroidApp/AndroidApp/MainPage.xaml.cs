@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -12,7 +13,9 @@ using System.Threading.Tasks;
 using AndroidApp.Classes.Services.App;
 using AndroidApp.Classes.Services.Network;
 using AndroidApp.Classes.Services.Notification;
+using AndroidApp.Classes.Services.State;
 using AndroidApp.Classes.Utils;
+using Java.Sql;
 using RequestApi.Crawl;
 using RequestApi.Crawl.Result;
 using Xamarin.CommunityToolkit.UI.Views;
@@ -33,16 +36,22 @@ namespace AndroidApp
         public string Url { get; set; }
     }
 
+   
+
     public partial class MainPage : ContentPage
     {
         private readonly ObservableCollection<Log> _logs = new ObservableCollection<Log>();
         private readonly ObservableCollection<CrawlTask>[] _crawlTaskList = new ObservableCollection<CrawlTask>[CrawlType.Max];
         private readonly INotificationManager _notificationManager;
+        private readonly IAppInitializer _appInitializer;
         private readonly SolidColorBrush _disabledForegroundColor = new SolidColorBrush(Color.FromRgb(126, 126, 126));
         private readonly CrawlTaskManager _crawlTaskManager = new CrawlTaskManager();
+        private readonly object _waitForPhoneWakeUp = new ();
+        private volatile bool _isPhoneWakeUp = false;
         private bool _isDataNetworkActivated = false;
         private bool _isWifiNetworkActivated = false;
         private CrawlTask _selectedCrawlTask;
+        
 
 
         public MainPage()
@@ -56,6 +65,8 @@ namespace AndroidApp
             _crawlTaskManager.OnCrawlMatched += OnCrawlMatched;
 
             _notificationManager = DependencyService.Get<INotificationManager>();
+            _appInitializer = DependencyService.Get<IAppInitializer>();
+            _appInitializer.SetValue(typeof(CrawlTaskManager), _crawlTaskManager);
             _crawlTaskList[CrawlType.DCInside] = new ObservableCollection<CrawlTask>();
             _crawlTaskList[CrawlType.FMKorea] = new ObservableCollection<CrawlTask>();
 
@@ -73,6 +84,7 @@ namespace AndroidApp
 
             // 인터넷 상태 변경감지
             Connectivity.ConnectivityChanged += (sender, args) => Device.BeginInvokeOnMainThread(CheckNetworkState);
+
         }
 
         private void InitializeDefaultUIStates()
@@ -127,9 +139,13 @@ namespace AndroidApp
             }
         }
 
+        
+
         private void OnCrawlRequest(CrawlTask task)
         {
-            UpdateStatusBar();
+            Monitor.Enter(_waitForPhoneWakeUp);
+            _isPhoneWakeUp = false;
+            WaitForWake(true);
         }
 
         private void OnCrawlMatched(CrawlTask crawl, MatchedCrawlResult matchedresult)
@@ -141,8 +157,27 @@ namespace AndroidApp
             _notificationManager.SendNotification($"[{matchedresult.MatchedTime:tt h:mm:ss}] {matchedresult.Result.Name}", matchedresult.Result.Title);
         }
 
+        // WaitForWake는 무조건 다른 쓰레드에서 실행되어야함.
+        private void WaitForWake(bool state)
+        {
+            Dispatcher.BeginInvokeOnMainThread(() =>
+            {
+                DependencyService.Get<IForegroundServiceController>().WakeLock(state);
+                _isPhoneWakeUp = state;
+            });
+
+            // _isPhoneWakeUp이 state가 되야 반복문을 탈출
+            while (_isPhoneWakeUp != state)
+            {
+            }
+
+        }
+
         private void OnCrawlFailed(CrawlTask task, string errorMessage)
         {
+            WaitForWake(false);
+            Monitor.Exit(_waitForPhoneWakeUp);
+
             UpdateStatusBar();
 
             if (errorMessage != string.Empty)
@@ -151,6 +186,9 @@ namespace AndroidApp
 
         private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
         {
+            WaitForWake(false);
+            Monitor.Exit(_waitForPhoneWakeUp);
+
             UpdateStatusBar();
         }
 
@@ -239,9 +277,11 @@ namespace AndroidApp
 
         }
 
-        private void _btnClose_OnClicked(object sender, EventArgs e)
+        private async void _btnClose_OnClicked(object sender, EventArgs e)
         {
-            DependencyService.Get<ICloseApplication>().Close();
+            Dbg.WrilteLine("애플리케이션 종료 시작");
+            DependencyService.Get<IAppCloser>().Close();
+            Dbg.WrilteLine("서비스가 성공적으로 제거되었습니다.");
         }
 
 
@@ -666,6 +706,19 @@ namespace AndroidApp
             _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             AddNoticeLog("설정 리로드 완료");
+        }
+
+
+        private async void _btnStopForegroundService_OnClicked(object sender, EventArgs e)
+        {
+            await DependencyService.Get<IForegroundServiceController>().StopForegroundServiceAsync();
+
+            
+        }
+
+        private void _btnStartForegroundService_OnClicked(object sender, EventArgs e)
+        {
+            DependencyService.Get<IForegroundServiceController>().StartForegroundService();
         }
     }
 }
