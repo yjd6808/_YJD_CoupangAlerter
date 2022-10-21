@@ -12,6 +12,7 @@ using AndroidApp.Droid.Classes.Services.Notification;
 using RequestApi.Crawl;
 using Xamarin.Essentials;
 using Xamarin.Forms;
+using static Android.OS.PowerManager;
 
 namespace AndroidApp.Droid
 {
@@ -21,6 +22,7 @@ namespace AndroidApp.Droid
     public class MainActivity : global::Xamarin.Forms.Platform.Android.FormsAppCompatActivity
     {
         public static Classes.Services.State.ForegroundService s_ForegroundService = null;
+        public static WakeLock LockApp = null;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -29,6 +31,12 @@ namespace AndroidApp.Droid
             Platform.Init(this, savedInstanceState);
             Forms.Init(this, savedInstanceState);
             LoadApplication(new App());
+
+            // https://learn.microsoft.com/en-us/dotnet/api/android.os.wakelockflags?view=xamarin-android-sdk-12
+            // Sleep 모드에서도 항상 쓰레드가 스케쥴링 될 수 있도록 깨워놓자.
+            var pm = (PowerManager)GetSystemService(Context.PowerService);
+            LockApp = pm.NewWakeLock(WakeLockFlags.Partial, "efsfseef");
+            LockApp.Acquire();
 
             // https://stackoverflow.com/questions/2039555/how-to-get-an-android-wakelock-to-work
             Window.AddFlags(WindowManagerFlags.KeepScreenOn);

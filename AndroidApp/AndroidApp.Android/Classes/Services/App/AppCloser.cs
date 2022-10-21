@@ -14,6 +14,7 @@ namespace AndroidApp.Droid.Classes.Services.App
     {
         public async void Close()
         {
+            MainActivity.LockApp.Release();
             CrawlTaskManager crawlTaskManager = DependencyService.Get<IAppInitializer>().GetValue<CrawlTaskManager>(typeof(CrawlTaskManager));
 
             if (crawlTaskManager.Running)

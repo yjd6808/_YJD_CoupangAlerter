@@ -15,6 +15,7 @@ using AndroidApp.Classes.Services.Network;
 using AndroidApp.Classes.Services.Notification;
 using AndroidApp.Classes.Services.State;
 using AndroidApp.Classes.Utils;
+using Java.Nio.FileNio;
 using Java.Sql;
 using RequestApi.Crawl;
 using RequestApi.Crawl.Result;
@@ -79,12 +80,12 @@ namespace AndroidApp
             _livFMCrawlList.ItemsSource = _crawlTaskList[CrawlType.FMKorea];
 
 
+
             // 인터넷 상태 확인방법
             CheckNetworkState();
 
             // 인터넷 상태 변경감지
             Connectivity.ConnectivityChanged += (sender, args) => Device.BeginInvokeOnMainThread(CheckNetworkState);
-
         }
 
         private void InitializeDefaultUIStates()
@@ -143,18 +144,26 @@ namespace AndroidApp
 
         private void OnCrawlRequest(CrawlTask task)
         {
+            /* 매칭될 때만 화면 밝아지도록 함 OnCrawlMatched()
             Monitor.Enter(_waitForPhoneWakeUp);
-            _isPhoneWakeUp = false;
             WaitForWake(true);
+            */
         }
 
         private void OnCrawlMatched(CrawlTask crawl, MatchedCrawlResult matchedresult)
         {
-            UpdateStatusBar();
-            AddCrawlMatchedLog(matchedresult);
+            lock (_waitForPhoneWakeUp)
+            {
+                _isPhoneWakeUp = false;
+                WaitForWake(true);
 
+                UpdateStatusBar();
+                AddCrawlMatchedLog(matchedresult);
 
-            _notificationManager.SendNotification($"[{matchedresult.MatchedTime:tt h:mm:ss}] {matchedresult.Result.Name}", matchedresult.Result.Title);
+                _notificationManager.SendNotification($"[{matchedresult.MatchedTime:tt h:mm:ss}] {matchedresult.Result.Name}", matchedresult.Result.Title);
+
+                WaitForWake(false);
+            }
         }
 
         // WaitForWake는 무조건 다른 쓰레드에서 실행되어야함.
@@ -169,14 +178,14 @@ namespace AndroidApp
             // _isPhoneWakeUp이 state가 되야 반복문을 탈출
             while (_isPhoneWakeUp != state)
             {
-            }
 
+            }
         }
 
         private void OnCrawlFailed(CrawlTask task, string errorMessage)
         {
-            WaitForWake(false);
-            Monitor.Exit(_waitForPhoneWakeUp);
+            //WaitForWake(false);
+            //Monitor.Exit(_waitForPhoneWakeUp);
 
             UpdateStatusBar();
 
@@ -186,8 +195,8 @@ namespace AndroidApp
 
         private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
         {
-            WaitForWake(false);
-            Monitor.Exit(_waitForPhoneWakeUp);
+            //WaitForWake(false);
+            //Monitor.Exit(_waitForPhoneWakeUp);
 
             UpdateStatusBar();
         }
@@ -214,6 +223,7 @@ namespace AndroidApp
 
             _logs.Add(log);
             _livLog.ScrollTo(log, ScrollToPosition.End, true);
+            Dbg.WrilteLine(content);
         }
 
         private void AddCrawlMatchedLog(MatchedCrawlResult matched)

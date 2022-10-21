@@ -57,7 +57,7 @@ namespace RequestApi.Crawl
             _delay = delay;
         }
 
-        public void Stop()
+        public async Task Stop()
         {
             if (!_running) throw new Exception("시작되지 않았습니다.");
             _running = false;
@@ -75,7 +75,7 @@ namespace RequestApi.Crawl
                         break;
                 }
 
-                Thread.Sleep(10);
+                await Task.Delay(10);
             }
 
             
@@ -115,7 +115,7 @@ namespace RequestApi.Crawl
         }
 
         // ===========================================
-        private void WorkerThread()
+        private async void WorkerThread()
         {
             while (_running)
             {
@@ -170,7 +170,8 @@ namespace RequestApi.Crawl
                     Monitor.Exit(this);
                 }
 
-                Thread.Sleep(10);
+
+                await Task.Delay(10);
             }
 
             Debug.WriteLine($"[작업 쓰레드({CrawlType.ToString(_crawlType)}, {Thread.CurrentThread.ManagedThreadId})가 종료되었습니다.]");

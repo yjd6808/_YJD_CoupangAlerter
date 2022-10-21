@@ -123,6 +123,11 @@ namespace RequestApi.Crawl
             s_configDirName = path;
         }
 
+        public string GetConfigDirectory()
+        {
+            return s_configDirName;
+        }
+
         public void Start()
         {
             if (s_configDirName == null)
@@ -495,7 +500,7 @@ namespace RequestApi.Crawl
 
         // 코드가 너무 보기 안좋다.
         // 근데 로직을 아예 다 지우고 새로 작성하는거 아닌 이상 어쩔수가 없다.
-        private void WorkerThread(object state)
+        private async void WorkerThread(object state)
         {
             // 작업가능한 워커쓰레드별 상태를 나타내는 변수이다.
             bool[] readyToWork = new bool[CrawlType.Max];
@@ -542,7 +547,7 @@ namespace RequestApi.Crawl
                             Monitor.Pulse(worker);
                         }
 
-                        Thread.Sleep(10);
+                        await Task.Delay(10);
 
                         // 하나의 워커쓰레드라도 작업을 완료하면 올라간다.
                         if (worker.Empty())
