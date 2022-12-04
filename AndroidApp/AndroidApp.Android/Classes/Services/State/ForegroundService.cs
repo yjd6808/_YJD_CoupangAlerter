@@ -17,6 +17,8 @@ namespace AndroidApp.Droid.Classes.Services.State
     [Service]
     public class ForegroundService : Service
     {
+        public const string ChannelId = "notification channel";
+
         public bool IsStopped => _isStopped;
 
         private volatile bool _isStopped;
@@ -62,7 +64,7 @@ namespace AndroidApp.Droid.Classes.Services.State
 
         public void StartForegroundService()
         {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "default");
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ChannelId);
             builder.SetSmallIcon(Resource.Mipmap.icon);
             builder.SetContentTitle("포그라운드 서비스 실행중");
 
@@ -73,7 +75,7 @@ namespace AndroidApp.Droid.Classes.Services.State
             if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
             {
                 NotificationManager manager = (NotificationManager)GetSystemService(Service.NotificationService);
-                manager.CreateNotificationChannel(new NotificationChannel("default", "기본 채널", NotificationImportance.Default));
+                manager.CreateNotificationChannel(new NotificationChannel(ChannelId, "포그라운드 채널", NotificationImportance.Default));
             }
 
             
@@ -81,6 +83,10 @@ namespace AndroidApp.Droid.Classes.Services.State
             StartForeground(1, builder.Build());
         }
 
-
+        public void RemoveNotificationChannel()
+        {
+            NotificationManager manager = (NotificationManager)GetSystemService(Service.NotificationService);
+            manager.DeleteNotificationChannel(ChannelId);
+        }
     }
 }

@@ -9,25 +9,27 @@ using Android.OS;
 using AndroidApp.Classes.Services.Notification;
 using AndroidX.Core.App;
 using System;
+using System.Collections.Generic;
+using Java.Util;
 
 [assembly: Xamarin.Forms.Dependency(typeof(AndroidApp.Droid.Classes.Services.Notification.AndroidNotificationManager))]
 namespace AndroidApp.Droid.Classes.Services.Notification
 {
     public class AndroidNotificationManager : INotificationManager
     {
-        const string channelId = "default";
-        const string channelName = "Default";
-        const string channelDescription = "The default channel for notifications.";
+        private const string ChannelId = "notification channel";
+        private const string ChannelName = "Default";
+        private const string ChannelDescription = "The default channel for notifications.";
 
         public const string TitleKey = "title";
         public const string MessageKey = "message";
         public const string MesssageIdKey = "message";
 
-        bool channelInitialized = false;
-        int messageId = 0;
-        int pendingIntentId = 0;
+        private bool _channelInitialized = false;
+        private int _messageIdSeq = 0;
+        private int _pendingIntentSeq = 0;
 
-        NotificationManager manager;
+        private NotificationManager _manager;
 
         public event EventHandler NotificationReceived;
 
@@ -46,21 +48,21 @@ namespace AndroidApp.Droid.Classes.Services.Notification
 
         public void SendNotification(string title, string message, DateTime? notifyTime = null)
         {
-            if (!channelInitialized)
+            if (!_channelInitialized)
             {
                 CreateNotificationChannel();
             }
 
             if (notifyTime != null)
             {
-                int msgId = messageId++;
+                int msgId = _messageIdSeq++;
                 Intent intent = new Intent(Application.Context, typeof(AlarmHandler));
                 intent.SetAction("notification");
                 intent.PutExtra(TitleKey, title);
                 intent.PutExtra(MessageKey, message);
                 intent.PutExtra(MesssageIdKey, msgId);
 
-                PendingIntent pendingIntent = PendingIntent.GetBroadcast(Application.Context, pendingIntentId++, intent, PendingIntentFlags.CancelCurrent);
+                PendingIntent pendingIntent = PendingIntent.GetBroadcast(Application.Context, _pendingIntentSeq++, intent, PendingIntentFlags.CancelCurrent);
                 long triggerTime = GetNotifyTime(notifyTime.Value);
                 AlarmManager alarmManager = Application.Context.GetSystemService(Context.AlarmService) as AlarmManager;
                 alarmManager.Set(AlarmType.RtcWakeup, triggerTime, pendingIntent);
@@ -85,7 +87,7 @@ namespace AndroidApp.Droid.Classes.Services.Notification
 
         public void Show(string title, string message)
         {
-            int msgId = messageId++;
+            int msgId = _messageIdSeq++;
             Intent intent = new Intent(Application.Context, typeof(MainActivity));
             intent.AddFlags(ActivityFlags.ClearTop);
             intent.SetAction("notification");
@@ -93,35 +95,42 @@ namespace AndroidApp.Droid.Classes.Services.Notification
             intent.PutExtra(MessageKey, message);
             intent.PutExtra(MesssageIdKey, msgId);
 
-            PendingIntent pendingIntent = PendingIntent.GetActivity(Application.Context, pendingIntentId++, intent, PendingIntentFlags.Immutable);
+            PendingIntent pendingIntent = PendingIntent.GetActivity(Application.Context, _pendingIntentSeq++, intent, PendingIntentFlags.Immutable);
 
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(Application.Context, channelId)
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(Application.Context, ChannelId)
                 .SetContentIntent(pendingIntent)
                 .SetContentTitle(title)
                 .SetContentText(message)
                 .SetLargeIcon(BitmapFactory.DecodeResource(Application.Context.Resources, Resource.Mipmap.icon))
                 .SetSmallIcon(Resource.Mipmap.icon)
+                .SetAutoCancel(true)
                 .SetDefaults((int)NotificationDefaults.Sound | (int)NotificationDefaults.Vibrate);
 
             Android.App.Notification notification = builder.Build();
-            manager.Notify(msgId, notification);
+            _manager.Notify(msgId, notification);
         }
 
         void CreateNotificationChannel()
         {
-            manager = (NotificationManager)Application.Context.GetSystemService(Context.NotificationService);
+            _manager = (NotificationManager)Application.Context.GetSystemService(Context.NotificationService);
 
             if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
             {
-                var channelNameJava = new Java.Lang.String(channelName);
-                var channel = new NotificationChannel(channelId, channelNameJava, NotificationImportance.Default)
+                var channelNameJava = new Java.Lang.String(ChannelName);
+                var channel = new NotificationChannel(ChannelId, channelNameJava, NotificationImportance.Default)
                 {
-                    Description = channelDescription
+                    Description = ChannelDescription
                 };
-                manager.CreateNotificationChannel(channel);
+                _manager.CreateNotificationChannel(channel);
             }
 
-            channelInitialized = true;
+            _channelInitialized = true;
+        }
+
+        void RemoveNotificationChannel()
+        {
+            _manager.DeleteNotificationChannel(ChannelId);
+            _channelInitialized = false;
         }
 
         long GetNotifyTime(DateTime notifyTime)

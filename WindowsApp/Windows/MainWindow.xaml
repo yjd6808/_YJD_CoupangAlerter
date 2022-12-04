@@ -6,12 +6,13 @@
         xmlns:local="clr-namespace:WindowsApp"
         mc:Ignorable="d"
         Height="770"
-        Width="350"
+        Width="400"
         Closed="MainWindow_OnClosed"
         WindowStyle="None"
         FontSize="16"
         MouseDown="MainWindow_OnMouseDown"
         Loaded="MainWindow_OnLoaded"
+        xmlns:dbg="debug-mode"
         ResizeMode="NoResize">
     <Grid>
         <Grid.RowDefinitions>
@@ -76,7 +77,7 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="60"></ColumnDefinition>
-                            <ColumnDefinition Width="30"></ColumnDefinition>
+                            <ColumnDefinition Width="50"></ColumnDefinition>
                             <ColumnDefinition Width="50"></ColumnDefinition>
                             <ColumnDefinition Width="*"></ColumnDefinition>
                         </Grid.ColumnDefinitions>
@@ -363,7 +364,7 @@
                                        HorizontalAlignment="Center" />
                             <TextBox Grid.Row="0"
                                      Grid.Column="1"
-                                     Text="5000"
+                                     Text="120000"
                                      PreviewTextInput="Number_PreviewTextInput"
                                      Name="_tbDCCrawlDelay" />
 
@@ -376,7 +377,7 @@
                                        HorizontalAlignment="Center" />
                             <TextBox Grid.Row="1"
                                      Grid.Column="1"
-                                     Text="5000"
+                                     Text="240000"
                                      PreviewTextInput="Number_PreviewTextInput"
                                      Name="_tbFMCrawlDelay" />
                         </Grid>
@@ -481,6 +482,13 @@
                        Opacity="0.2"
                        Margin="0, 5"></Rectangle>
 
+            <ListView x:Name="_livDebugLog"
+                      Height="200"
+                      MaxHeight="400"
+                      DockPanel.Dock="Top">
+            </ListView>
+
+
             <Grid Name="_gridCrawllistManipulationContainer"
                   Height="30">
                 <Grid.ColumnDefinitions>
@@ -505,6 +513,10 @@
                         Content="추가"
                         Click="_btnCrawlAdd_Click" />
             </Grid>
+
+
         </DockPanel>
+        
+
     </Grid>
 </Window>

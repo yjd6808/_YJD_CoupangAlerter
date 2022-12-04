@@ -146,6 +146,7 @@ namespace RequestApi.Crawl
                         // 크롤링 시간 후 대기하는 시간이 너무 길어질 수 있으므로 주기적으로 얼마나 잤는지 체크해준다.
                         // 쓰레드 쉬는 장소 (2)
                         int sleepTime = 0;
+                        int prevSleepTime = 0;
                         Stopwatch stopwatch = Stopwatch.StartNew();
                         for (;;)
                         {
@@ -155,11 +156,26 @@ namespace RequestApi.Crawl
                                 return;
 
                             stopwatch.Stop();
+                            prevSleepTime = sleepTime;
                             sleepTime += (int)stopwatch.Elapsed.TotalMilliseconds;
+#if DEBUG
+                            int prevElapsedSecond = prevSleepTime / 1000;
+                            int elasepdSecond = sleepTime / 1000;
+                            if (elasepdSecond  - prevElapsedSecond >= 1)
+                            {
+                                Logger.GetInstance().OnDebugLog?.Invoke(LoggerCode.CrawlTaskWorkerTick, new object[]{ temp.Value, elasepdSecond });
+                            }
+#endif
+
                             stopwatch.Reset();
                             stopwatch.Start();
                             if (sleepTime >= _delay)
+                            {
+#if DEBUG
+                                Logger.GetInstance().OnDebugLog?.Invoke(LoggerCode.CrawlTaskWorkerTimeOver, new object[] { temp.Value });
+#endif
                                 break;
+                            }
                         }
                     }
                 }

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Media;
+using System.Runtime.InteropServices;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -19,12 +20,14 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using RequestApi.Crawl;
 using RequestApi.Crawl.Result;
+using RequestApi.Utils;
 using WindowsApp.Classes.Utils;
 
 namespace WindowsApp.Windows
@@ -45,6 +48,8 @@ namespace WindowsApp.Windows
 
     public partial class MainWindow : Window
     {
+        [DllImport("user32")] public static extern int FlashWindow(IntPtr hwnd, bool bInvert);
+
         private CrawlTaskManager _crawlTaskManager = new CrawlTaskManager();
         private bool _windowLoaded = false;
         private Brush _disabledForegroundColor = new SolidColorBrush(Color.FromRgb(126, 126, 126));
@@ -52,9 +57,7 @@ namespace WindowsApp.Windows
         private CrawlTask? _selectedCrawlTask;
         private SpeechSynthesizer _speechSynthesizer = new SpeechSynthesizer();
         private volatile bool _speeching = false;
-
-        private Thread th1;
-        private Thread th2;
+        private Logger _dbgLogger = Logger.GetInstance();
 
         public MainWindow()
         {
@@ -68,11 +71,43 @@ namespace WindowsApp.Windows
 
             _speechSynthesizer.SetOutputToDefaultAudioDevice();
 
+
             InitializeComponent();
             InitializeDefaultUIStates();
 
-           
+#if DEBUG
+            _dbgLogger.OnDebugLog += (code, o) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    string log = string.Empty;
 
+                    switch (code)
+                    {
+                        case LoggerCode.CrawlTaskWorkerTick:
+                        {
+                            var task = o[0] as CrawlTask;
+                            var tick = (int)o[1];
+                            log = $"{task.TaskName} {tick} 경과";
+                            break;
+                        }
+                        case LoggerCode.CrawlTaskWorkerTimeOver:
+                        {
+                            var task = o[0] as CrawlTask;
+                            log = $"{task.TaskName} 시간 다됨";
+                            break;
+                        }
+                    }
+
+                    if (_livDebugLog.Items.Count > 5000)
+                        _livDebugLog.Items.RemoveAt(0);
+
+                    _dbgLogger.WriteLine(log);
+                    _livDebugLog.Items.Add(log);
+                    _livDebugLog.ScrollIntoView(_livDebugLog.Items[^1]);
+                });
+            };
+#endif
         }
 
         private void OnCrawlRequest(CrawlTask task)
@@ -137,6 +172,10 @@ namespace WindowsApp.Windows
         {
             if (_crawlTaskManager.Running)
                 _crawlTaskManager.Stop();
+
+#if DEBUG
+            _dbgLogger.Close();
+#endif
         }
 
         private void MainWindow_OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -250,6 +289,7 @@ namespace WindowsApp.Windows
             _btnCrawlAdd.IsEnabled = true;
             _btnCrawlAdd.Foreground = Brushes.Black;
             _selectedCrawlTask = null;
+            _livDebugLog.Height = 0;
 
             UpdateCrawlTaskList();
         }
@@ -265,6 +305,7 @@ namespace WindowsApp.Windows
             _btnCrawlAdd.IsEnabled = false;
             _btnCrawlAdd.Foreground = _disabledForegroundColor;
             _selectedCrawlTask = null;
+            _livDebugLog.Height = 200;
         }
 
         private void SelectFMCrawlTabItem()
@@ -279,6 +320,7 @@ namespace WindowsApp.Windows
             _btnCrawlAdd.IsEnabled = true;
             _btnCrawlAdd.Foreground = Brushes.Black;
             _selectedCrawlTask = null;
+            _livDebugLog.Height = 0;
 
             UpdateCrawlTaskList();
 
@@ -413,6 +455,9 @@ namespace WindowsApp.Windows
             {
                 _livLog.Items.Add(log);
                 _livLog.ScrollIntoView(log);
+
+                WindowInteropHelper wih = new WindowInteropHelper(this);
+                FlashWindow(wih.Handle, true);
             });
         }
 

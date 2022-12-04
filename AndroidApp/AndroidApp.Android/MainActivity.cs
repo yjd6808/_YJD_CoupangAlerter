@@ -64,32 +64,25 @@ namespace AndroidApp.Droid
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         }
 
-        protected override void OnNewIntent(Intent intent)
+
+        protected override async void OnNewIntent(Intent intent)
         {
-            CreateNotificationFromIntent(intent);
+            // ================================== 크롤링 매치 결과 알람을 누른 경우
+            //string title = intent.GetStringExtra(AndroidNotificationManager.TitleKey);
+            //string message = intent.GetStringExtra(AndroidNotificationManager.MessageKey);
+            int messageId = intent.GetIntExtra(AndroidNotificationManager.MesssageIdKey, -1);
 
             NotificationManager notificationManager = (NotificationManager)GetSystemService(Context.NotificationService);
+            // 포그라운드 알림 메시지가 크롤링 매칭결과 알림 메시지중 1개로 변조되어 보이는 현상때문에
+            // 서비스 정지시켰다가 다시 시작시키는 방식으로 한다.
+            await DependencyService.Get<IForegroundServiceController>().StopForegroundServiceAsync();
+
+            //notificationManager.Cancel(AndroidNotificationManager.MesssageIdKey, messageId);
             notificationManager.CancelAll();
-        }
+            if (messageId != -1)
+                notificationManager.Cancel(messageId);
 
-        void CreateNotificationFromIntent(Intent intent)
-        {
-            // if (intent.Action == "notification") 설정한대로 안들어오고 "android.Intent.MAIN" 뭐 이런거 들어오네
-
-            // 아래 기능이 실행이안되네
-            if (intent.Extras != null)
-            {
-                string title = intent.GetStringExtra(AndroidNotificationManager.TitleKey);
-                string message = intent.GetStringExtra(AndroidNotificationManager.MessageKey);
-                int messageId = intent.GetIntExtra(AndroidNotificationManager.MesssageIdKey, -1);
-                DependencyService.Get<INotificationManager>().ReceiveNotification(title, message);
-
-                if (messageId != -1)
-                {
-                    // https://stackoverflow.com/questions/59052033/cancel-notification-when-app-is-removed-from-recentsmemory-list
-                    
-                }
-            }
+            DependencyService.Get<IForegroundServiceController>().StartForegroundService();
         }
     }
 }

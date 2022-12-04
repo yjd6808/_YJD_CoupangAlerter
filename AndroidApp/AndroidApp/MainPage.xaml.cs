@@ -81,6 +81,12 @@ namespace AndroidApp
 
 
 
+#if DEBUG
+            if (!_crawlTaskManager.HasTask)
+                _crawlTaskManager.RegisterDCCrawl("ㅇㅇ", "ㅇㅇ", CrawlStringMatchRule.Contain, CrawlMatchType.NickName);
+#endif
+
+
             // 인터넷 상태 확인방법
             CheckNetworkState();
 

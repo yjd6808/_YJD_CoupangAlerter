@@ -38,6 +38,8 @@ namespace AndroidApp.Droid.Classes.Services.State
 
             Dbg.WrilteLine("서비스 삭제를 시작합니다.");
 
+            foregroundService.RemoveNotificationChannel();
+
             var stopIntent = new Intent(Application.Context, typeof(ForegroundService));
             stopIntent.SetAction("stopForeground");
             Application.Context.StopService(stopIntent);

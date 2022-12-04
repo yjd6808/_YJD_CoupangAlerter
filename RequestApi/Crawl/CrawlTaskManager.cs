@@ -504,6 +504,9 @@ namespace RequestApi.Crawl
         {
             // 작업가능한 워커쓰레드별 상태를 나타내는 변수이다.
             bool[] readyToWork = new bool[CrawlType.Max];
+
+            // 수행가능한 작업이 아예 없는 경우
+            bool[] noJob = new bool[CrawlType.Max];
             
             BEGIN: 
             while (_running)
@@ -526,26 +529,30 @@ namespace RequestApi.Crawl
                     }
                 }
 
-
                 for (int i = 0; i < CrawlType.Max; i++)
+                {
+                    // 작업을 시작시켜준다.
                     if (readyToWork[i])
                         _taskWorkers[i].Waitor.Set();
 
-                
+                    // 수행가능한 작업이 아예 엾는 경우
+                    noJob[i] = _taskWorkers[i].Empty();
+                }
+
+
                 // 쓰레드 쉬는 장소(2)에서 블로킹 상태에 있는 쓰레드들을 일정시간마다 깨워서 시간을 체크해준다.
                 // 하나의 워커 쓰레드라도 작업을 모두 완료하면 나간다.
-                for (;;)
+                while (_running)
                 {
-
                     for (int i = 0; i < CrawlType.Max; i++)
                     {
                         // 이미 Signal 핸들이 켜진 녀석은 채크할 필요가 없다.
                         var worker = _taskWorkers[i];
 
                         lock (worker)
-                        {
                             Monitor.Pulse(worker);
-                        }
+
+                        if (noJob[i]) continue;
 
                         await Task.Delay(10);
 
