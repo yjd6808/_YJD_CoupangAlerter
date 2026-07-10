@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WindowsApp"
         mc:Ignorable="d"
-        Height="770"
+        Height="840"
         Width="1100"
         Closing="MainWindow_OnClosing"
          Closed="MainWindow_OnClosed"

@@ -5,14 +5,15 @@
 
 using System;
 using System.IO;
-using System.Net;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Playwright;
 
 namespace WebFetch
 {
     class Program
     {
-        static int Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             {
@@ -22,7 +23,7 @@ namespace WebFetch
 
             try
             {
-                string html = DownloadHtml(args[0]);
+                string html = await DownloadHtmlAsync(args[0]);
                 Console.OutputEncoding = Encoding.UTF8;
                 Console.Write(html);
                 return 0;
@@ -34,25 +35,29 @@ namespace WebFetch
             }
         }
 
-        static string DownloadHtml(string url)
+        static async Task<string> DownloadHtmlAsync(string url)
         {
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            req.Method = "GET";
-            req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
-            req.Timeout = 30000;
-
-            using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
-            using (Stream responseStream = response.GetResponseStream())
+            string installFlag = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".playwright-installed");
+            if (!File.Exists(installFlag))
             {
-                if (responseStream == null)
-                    throw new Exception("No response stream");
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    responseStream.CopyTo(ms);
-                    return Encoding.UTF8.GetString(ms.ToArray());
-                }
+                int exitCode = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+                if (exitCode != 0)
+                    throw new Exception($"Playwright Chromium 설치 실패 (exit code: {exitCode})");
+                File.WriteAllText(installFlag, "installed");
             }
+
+            using var playwright = await Playwright.CreateAsync();
+            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            {
+                Headless = true
+            });
+            var page = await browser.NewPageAsync();
+            await page.GotoAsync(url, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.NetworkIdle,
+                Timeout = 30000
+            });
+            return await page.ContentAsync();
         }
     }
 }

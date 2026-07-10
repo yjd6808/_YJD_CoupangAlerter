@@ -206,24 +206,32 @@ namespace RequestApi.Crawl
                         0);
                     todayPost = true;
                 }
-                else if (time.Contains(".") && time.Length == 10) // 2020.10.11 => 10글자
+                else if (time.Contains("."))
                 {
-                    int year = int.Parse(time.Split('.')[0]);
-                    int month = int.Parse(time.Split('.')[1]);
-                    int day = int.Parse(time.Split('.')[2]);
+                    string[] parts = time.Split('.');
+                    if (parts.Length == 3) // yyyy.MM.dd (10) or yy.MM.dd (8)
+                    {
+                        int year, month, day;
+                        if (parts[0].Length == 4)
+                            year = int.Parse(parts[0]);
+                        else
+                            year = 2000 + int.Parse(parts[0]);
 
-                    writeDate = new DateTime(year, month, day);
-                }
-                else if (time.Contains(".") && time.Length == 5) // 07.08 => 검색 페이지 월.일 형식
-                {
-                    int month = int.Parse(time.Split('.')[0]);
-                    int day = int.Parse(time.Split('.')[1]);
-                    int year = writeDate.Year;
+                        month = int.Parse(parts[1]);
+                        day = int.Parse(parts[2]);
+                        writeDate = new DateTime(year, month, day);
+                    }
+                    else if (parts.Length == 2) // MM.dd (5)
+                    {
+                        int month = int.Parse(parts[0]);
+                        int day = int.Parse(parts[1]);
+                        int year = writeDate.Year;
 
-                    if (month > writeDate.Month || (month == writeDate.Month && day > writeDate.Day))
-                        year--;
+                        if (month > writeDate.Month || (month == writeDate.Month && day > writeDate.Day))
+                            year--;
 
-                    writeDate = new DateTime(year, month, day);
+                        writeDate = new DateTime(year, month, day);
+                    }
                 }
 
                 _categoryNameMap.TryGetValue(boardType_, out FMBoardType boardType);

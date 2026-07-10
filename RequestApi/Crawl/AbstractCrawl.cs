@@ -53,7 +53,10 @@ namespace RequestApi.Crawl
                 string content = "";
 
                 if (!TryDonwloadSource(out content))
+                {
+                    errorMessage = $"[{CrawlType.ToStringInitial(Type)}] HTML 다운로드 실패";
                     return null;
+                }
 
                 HtmlDocument document = new HtmlDocument();
                 document.LoadHtml(content);
@@ -61,7 +64,7 @@ namespace RequestApi.Crawl
             }
             catch (Exception e)
             {
-                errorMessage = e.Message;
+                errorMessage = $"[{CrawlType.ToStringInitial(Type)}] {e.Message}";
                 return null;
             }
         }
@@ -88,7 +91,7 @@ namespace RequestApi.Crawl
             using (Stream responseStream = response.GetResponseStream())
             {
                 if (responseStream == null)
-                    return false;
+                    throw new Exception("응답 스트림이 null입니다.");
 
                 using (MemoryStream ms = new MemoryStream())
                 {
@@ -104,33 +107,35 @@ namespace RequestApi.Crawl
         {
             content = "";
 
-            try
-            {
-                string webFetchPath = Path.Combine(Environment.CurrentDirectory, "WebFetch.exe");
-                if (!File.Exists(webFetchPath))
-                    return false;
+            string webFetchPath = Path.Combine(Environment.CurrentDirectory, "WebFetch.exe");
+            if (!File.Exists(webFetchPath))
+                throw new Exception($"WebFetch.exe를 찾을 수 없습니다: {webFetchPath}");
 
-                ProcessStartInfo psi = new ProcessStartInfo
-                {
-                    FileName = webFetchPath,
-                    Arguments = CrawlUrl.AbsoluteUri,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    StandardOutputEncoding = Encoding.UTF8
-                };
-
-                using (Process p = Process.Start(psi))
-                {
-                    content = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(30000);
-                    return p.ExitCode == 0 && content.Length > 0;
-                }
-            }
-            catch
+            ProcessStartInfo psi = new ProcessStartInfo
             {
-                content = "";
-                return false;
+                FileName = webFetchPath,
+                Arguments = CrawlUrl.AbsoluteUri,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
+            };
+
+            using (Process p = Process.Start(psi))
+            {
+                content = p.StandardOutput.ReadToEnd();
+                string stdErr = p.StandardError.ReadToEnd();
+                p.WaitForExit(30000);
+
+                if (p.ExitCode != 0)
+                    throw new Exception($"WebFetch 종료코드 {p.ExitCode}: {stdErr}");
+
+                if (content.Length == 0)
+                    throw new Exception("WebFetch가 빈 결과를 반환했습니다.");
+
+                return true;
             }
         }
 
