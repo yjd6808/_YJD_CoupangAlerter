@@ -1,0 +1,78 @@
+﻿FMKorea 주식 게시판 카테고리 ID 검증 결과
+============================================================
+
+각 카테고리별 검증 URL (search.php?mid=stock + category={ID} + search_keyword=손흥민)
+실제 브라우저에서 URL을 열어 게시글의 카테고리 탭과 ID가 일치하는지 육안 확인
+
+============================================================
+[코드에 존재하는 카테고리 - 7개, 모두 ID 일치 확인 완료]
+============================================================
+
+1. 잡담 (ID: 196357514) ✅
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=196357514&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: 게시글 카테고리 탭에 "잡담" 표시됨 (노래 추천합니다, 충격) 손흥민 골 등 3개)
+
+2. 국내주식 (ID: 2997203870) ✅
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=2997203870&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: 게시글 카테고리 탭에 "국내주식" 표시됨 (코스피 시나리오, 현대건설 등 9개)
+
+3. 해외주식 (ID: 2997204381) ✅
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=2997204381&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: 게시글 카테고리 탭에 "해외주식" 표시됨 (주간 시장, 삼성전자 등 20개)
+
+4. 질문 (ID: 196466085) ✅
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=196466085&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: 게시글 카테고리 탭에 "질문" 표시됨 (닉네임 부분일치 확장 검색됨)
+
+5. 정보공유 (ID: 196633079) ✅
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=196633079&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: 게시글 카테고리 탭에 "정보공유" 표시됨 (호르무즈 해협 글 1개)
+
+6. 종목추천,분석 (ID: 196459220) ✅ (ID는 정상, 검색 결과 0건 = 손흥민 닉네임 글이 해당 카테고리에 없음)
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=196459220&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: "등록된 글이 없습니다." (카테고리/검색어 자체는 정상)
+
+7. 이벤트 (ID: 2061959383) ✅
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=2061959383&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+   결과: 게시글 카테고리 탭에 "이벤트" 표시됨 (역적할머니맥주님 등 10개)
+
+============================================================
+[코드에 누락된 카테고리 - 4개, FMBoardType enum/매핑 추가 필요]
+============================================================
+
+8. 실적발표 (ID: 9493665962)
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=9493665962&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+
+9. 매매기법 (ID: 196460542)
+   ▶ https://www.fmkorea.com/search.php?mid=stock&category=196460542&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+
+10. 매매인증 (ID: 196457812)
+    ▶ https://www.fmkorea.com/search.php?mid=stock&category=196457812&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+
+11. 공지 (ID: 196357542)
+    ▶ https://www.fmkorea.com/search.php?mid=stock&category=196357542&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+
+============================================================
+[전체(카테고리 필터 없음) 검색]
+============================================================
+전체(All)은 category 파라미터 자체를 생략
+▶ https://www.fmkorea.com/search.php?mid=stock&search_keyword=%EC%86%90%ED%9D%A5%EB%AF%BC&search_target=nick_name
+
+============================================================
+참고: 사이트 자체 카테고리 링크는 data-category_srl 속성 사용
+실제 FMKorea HTML에서 직접 추출한 검증 데이터:
+  잡담      data-category_srl="196357514"
+  국내주식  data-category_srl="2997203870"
+  해외주식  data-category_srl="2997204381"
+  질문      data-category_srl="196466085"
+  정보공유  data-category_srl="196633079"
+  종목추천,분석 data-category_srl="196459220"
+  실적발표  data-category_srl="9493665962"
+  매매기법  data-category_srl="196460542"
+  매매인증  data-category_srl="196457812"
+  이벤트    data-category_srl="2061959383"
+  공지      data-category_srl="196357542"
+
+============================================================
+검증 결과: 기존 7개 카테고리 ID 모두 정확 ✅
+누락된 4개 카테고리: 실적발표(9493665962), 매매기법(196460542), 매매인증(196457812), 공지(196357542)

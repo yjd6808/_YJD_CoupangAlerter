@@ -7,7 +7,8 @@
         mc:Ignorable="d"
         Height="770"
         Width="400"
-        Closed="MainWindow_OnClosed"
+        Closing="MainWindow_OnClosing"
+         Closed="MainWindow_OnClosed"
         WindowStyle="None"
         FontSize="16"
         MouseDown="MainWindow_OnMouseDown"
@@ -396,6 +397,22 @@
                                 Click="_btnClearCompletes_OnClicked"
                                 Content="완료 목록 초기화"
                                 Height="30" />
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      x:Name="_chkbTrayIcon"
+                                      VerticalAlignment="Center">
+                            </CheckBox>
+
+                            <TextBlock Grid.Column="1"
+                                   Text="트레이 아이콘 사용 (X버튼 최소화)"
+                                   VerticalAlignment="Center" />
+                        </Grid>
 
                         <Button x:Name="_btnReloadSetting"
                                 Click="_btnReloadSetting_OnClick"

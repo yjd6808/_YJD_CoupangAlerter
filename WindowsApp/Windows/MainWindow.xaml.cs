@@ -49,6 +49,21 @@ namespace WindowsApp.Windows
     public partial class MainWindow : Window
     {
         [DllImport("user32")] public static extern int FlashWindow(IntPtr hwnd, bool bInvert);
+        [DllImport("user32")]
+        private static extern bool FlashWindowEx(ref FLASHWINFO pwfi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FLASHWINFO
+        {
+            public uint cbSize;
+            public IntPtr hwnd;
+            public uint dwFlags;
+            public uint uCount;
+            public uint dwTimeout;
+        }
+
+        private const uint FLASHW_ALL = 3;
+        private const uint FLASHW_TIMERNOFG = 12;
 
         private CrawlTaskManager _crawlTaskManager = new CrawlTaskManager();
         private bool _windowLoaded = false;
@@ -58,6 +73,7 @@ namespace WindowsApp.Windows
         private SpeechSynthesizer _speechSynthesizer = new SpeechSynthesizer();
         private volatile bool _speeching = false;
         private Logger _dbgLogger = Logger.GetInstance();
+        private System.Windows.Forms.NotifyIcon _notifyIcon;
 
         public MainWindow()
         {
@@ -74,6 +90,26 @@ namespace WindowsApp.Windows
 
             InitializeComponent();
             InitializeDefaultUIStates();
+
+            _notifyIcon = new System.Windows.Forms.NotifyIcon();
+
+            try
+            {
+                _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly()?.Location ?? "");
+            }
+            catch
+            {
+                // ignored
+            }
+
+            _notifyIcon.Text = "CoupangAlerter";
+            _notifyIcon.DoubleClick += (s, e) =>
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                ShowInTaskbar = true;
+                Activate();
+            };
 
 #if DEBUG
             _dbgLogger.OnDebugLog += (code, o) =>
@@ -120,6 +156,12 @@ namespace WindowsApp.Windows
             UpdateStatusBar();
             AddCrawlMatchedLog(matchedresult);
 
+            TryPlayCompleteSound();
+
+            Dispatcher.BeginInvoke(() =>
+                MsgBox.ShowTopMost($"[{CrawlType.ToStringInitial(matchedresult.Result.CrawlType)}] {matchedresult.Result.Title}", "매칭 결과")
+            );
+
             if (_speeching)
                 return;
 
@@ -128,6 +170,51 @@ namespace WindowsApp.Windows
                 _speeching = true;
                 _speechSynthesizer.Speak("found matched result!");
             }).ContinueWith(x => _speeching = false);
+        }
+
+        private volatile bool _soundPlaying = false;
+
+        private void TryPlayCompleteSound()
+        {
+            if (_soundPlaying)
+                return;
+
+            string wavPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "complete.wav");
+            if (!System.IO.File.Exists(wavPath))
+                return;
+
+            try
+            {
+                _soundPlaying = true;
+                var player = new System.Media.SoundPlayer(wavPath);
+				player.Play();
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        using (var reader = new System.IO.BinaryReader(System.IO.File.OpenRead(wavPath)))
+                        {
+                            reader.ReadBytes(4); // RIFF
+                            reader.ReadInt32();
+                            reader.ReadBytes(8); // WAVE + fmt
+                            reader.ReadInt32();
+                            reader.ReadInt16();
+                            reader.ReadInt16();
+                            int sampleRate = reader.ReadInt32();
+                            reader.ReadInt32();
+                            reader.ReadInt16();
+                            int bitsPerSample = reader.ReadInt16();
+                            reader.ReadBytes(4); // data
+                            int dataSize = reader.ReadInt32();
+                            int durationMs = (int)((long)dataSize * 1000 / (sampleRate * bitsPerSample / 8));
+                            Thread.Sleep(durationMs + 100);
+                        }
+                    }
+                    catch { Thread.Sleep(3000); }
+                    finally { _soundPlaying = false; }
+                });
+            }
+            catch { _soundPlaying = false; }
         }
 
         private void OnCrawlFailed(CrawlTask task, string errorMessage)
@@ -142,7 +229,9 @@ namespace WindowsApp.Windows
         {
             UpdateStatusBar();
 
-            //Dispatcher.BeginInvoke(() => AddCrawlTaskLog(crawl, crawlresult));
+            Dispatcher.BeginInvoke(() =>
+                AddNoticeLog($"{crawlresult.Count}개 크롤링 완료 (작업: {crawl.TaskName})")
+            );
         }
 
         private void UpdateStatusBar()
@@ -186,7 +275,30 @@ namespace WindowsApp.Windows
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            Close();
+            if (_chkbTrayIcon.IsChecked == true)
+            {
+                Hide();
+                ShowInTaskbar = false;
+                _notifyIcon.Visible = true;
+            }
+            else
+            {
+                Close();
+            }
+        }
+
+        private void MainWindow_OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_chkbTrayIcon.IsChecked == true && _notifyIcon.Visible)
+            {
+                Hide();
+                ShowInTaskbar = false;
+                e.Cancel = true;
+                return;
+            }
+
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
         }
 
         private void TextBlock_OnMouseEnter(object sender, MouseEventArgs e)
@@ -433,7 +545,12 @@ namespace WindowsApp.Windows
                 ContentForeground = Brushes.Black
             };
 
-            _livLog.Items.Add(log);
+            if (_livLog.Items.Count >= 300)
+            {
+	            _livLog.Items.RemoveAt(0);
+            }
+
+			_livLog.Items.Add(log);
             _livLog.ScrollIntoView(log);
         }
 
@@ -453,11 +570,24 @@ namespace WindowsApp.Windows
 
             Dispatcher.BeginInvoke(() =>
             {
-                _livLog.Items.Add(log);
+	            if (_livLog.Items.Count >= 300)
+	            {
+		            _livLog.Items.RemoveAt(0);
+	            }
+
+	            _livLog.Items.Add(log);
                 _livLog.ScrollIntoView(log);
 
                 WindowInteropHelper wih = new WindowInteropHelper(this);
-                FlashWindow(wih.Handle, true);
+                FLASHWINFO fi = new FLASHWINFO
+                {
+                    cbSize = (uint)Marshal.SizeOf(typeof(FLASHWINFO)),
+                    hwnd = wih.Handle,
+                    dwFlags = FLASHW_ALL | FLASHW_TIMERNOFG,
+                    uCount = uint.MaxValue,
+                    dwTimeout = 0
+                };
+                FlashWindowEx(ref fi);
             });
         }
 
@@ -473,6 +603,11 @@ namespace WindowsApp.Windows
 
             Dispatcher.BeginInvoke(() =>
             {
+	            if (_livLog.Items.Count >= 300)
+	            {
+		            _livLog.Items.RemoveAt(0);
+				}
+
                 _livLog.Items.Add(log);
                 _livLog.ScrollIntoView(log);
             });

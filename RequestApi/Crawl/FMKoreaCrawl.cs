@@ -54,7 +54,7 @@ namespace RequestApi.Crawl
         // ====================================================================
 
         public static readonly string MainUrl = @"https://www.fmkorea.com";
-        public static readonly string CrawlBaseUrl = $"{MainUrl}/index.php?mid=stock";
+        public static readonly string CrawlBaseUrl = $"{MainUrl}/search.php?mid=stock";
 
 
         private static readonly Dictionary<FMBoardType, string> _categoryIdMap = new Dictionary<FMBoardType, string>()
@@ -134,7 +134,7 @@ namespace RequestApi.Crawl
         protected override List<CrawlResult> ParseContent(HtmlDocument document)
         {
             List<CrawlResult> results = new List<CrawlResult>();
-            HtmlNodeCollection collection = document.DocumentNode.SelectNodes("//table/tbody/tr");
+            HtmlNodeCollection collection = document.DocumentNode.SelectNodes("//table[contains(@class, 'bd_lst')]//tr[not(contains(@class, 'ad_wrapper'))]");
 
             if (collection == null)
                 return null;
@@ -192,7 +192,7 @@ namespace RequestApi.Crawl
                 DateTime writeDate = DateTime.Now;
                 bool todayPost = false;
 
-                if (time.Length == 5) // 00:00 => 5글자
+                if (time.Contains(":")) // 00:00 => 시:분 형식 (5글자)
                 {
                     int hour = int.Parse(time.Split(':')[0]);
                     int minute = int.Parse(time.Split(':')[1]);
@@ -206,12 +206,22 @@ namespace RequestApi.Crawl
                         0);
                     todayPost = true;
                 }
-                else if (time.Length == 10) // 2020.10.11 => 10글자
+                else if (time.Contains(".") && time.Length == 10) // 2020.10.11 => 10글자
                 {
-                    // 이전날에 작성된 경우
                     int year = int.Parse(time.Split('.')[0]);
                     int month = int.Parse(time.Split('.')[1]);
                     int day = int.Parse(time.Split('.')[2]);
+
+                    writeDate = new DateTime(year, month, day);
+                }
+                else if (time.Contains(".") && time.Length == 5) // 07.08 => 검색 페이지 월.일 형식
+                {
+                    int month = int.Parse(time.Split('.')[0]);
+                    int day = int.Parse(time.Split('.')[1]);
+                    int year = writeDate.Year;
+
+                    if (month > writeDate.Month || (month == writeDate.Month && day > writeDate.Day))
+                        year--;
 
                     writeDate = new DateTime(year, month, day);
                 }
