@@ -17,7 +17,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RequestApi\RequestApi.csproj" />
+    <ProjectReference Include="..\WebFetch\WebFetch.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
+
+  <Target Name="CopyWebFetchOutput" AfterTargets="Build">
+    <MSBuild Projects="..\WebFetch\WebFetch.csproj" Targets="Build" Properties="Configuration=$(Configuration)">
+      <Output TaskParameter="TargetOutputs" ItemName="WebFetchOutput" />
+    </MSBuild>
+    <Copy SourceFiles="@(WebFetchOutput)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="System.Speech" Version="6.0.0" />
