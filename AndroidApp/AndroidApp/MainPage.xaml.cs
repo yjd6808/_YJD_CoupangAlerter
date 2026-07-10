@@ -59,7 +59,6 @@ namespace AndroidApp
         {
             _crawlTaskManager.SetConfigDirectory(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "CoupangAlerter/config"));
             _crawlTaskManager.TryLoadTaskFile();
-            _crawlTaskManager.TryLoadCompleteFile();
             _crawlTaskManager.OnCrawlRequest += OnCrawlRequest;
             _crawlTaskManager.OnCrawlSuccess += OnCrawlSuccess;
             _crawlTaskManager.OnCrawlFailed += OnCrawlFailed;

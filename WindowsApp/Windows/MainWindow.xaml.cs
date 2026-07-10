@@ -25,6 +25,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Shell;
 using RequestApi.Crawl;
 using RequestApi.Crawl.Result;
 using RequestApi.Utils;
@@ -32,6 +33,16 @@ using WindowsApp.Classes.Utils;
 
 namespace WindowsApp.Windows
 {
+    // 매칭 결과 표시용 DTO
+    public class MatchedResultView
+    {
+        public long PostId { get; set; }
+        public string Title { get; set; }
+        public string Name { get; set; }
+        public string WriteDate { get; set; }
+        public string Url { get; set; }
+    }
+
     public class Log
     {
         public string Time { get; set; }
@@ -79,17 +90,21 @@ namespace WindowsApp.Windows
         {
             _crawlTaskManager.SetConfigDirectory(System.IO.Path.Combine(Environment.CurrentDirectory, "config"));
             _crawlTaskManager.TryLoadTaskFile();
-            _crawlTaskManager.TryLoadCompleteFile();
             _crawlTaskManager.OnCrawlRequest += OnCrawlRequest;
             _crawlTaskManager.OnCrawlSuccess += OnCrawlSuccess;
             _crawlTaskManager.OnCrawlFailed += OnCrawlFailed;
             _crawlTaskManager.OnCrawlMatched += OnCrawlMatched;
 
             _speechSynthesizer.SetOutputToDefaultAudioDevice();
-
-
             InitializeComponent();
             InitializeDefaultUIStates();
+
+            WindowChrome chrome = new WindowChrome();
+            chrome.CaptionHeight = 0;
+            chrome.ResizeBorderThickness = new Thickness(6);
+            chrome.CornerRadius = new CornerRadius(0);
+            chrome.GlassFrameThickness = new Thickness(0);
+            WindowChrome.SetWindowChrome(this, chrome);
 
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
 
@@ -155,6 +170,10 @@ namespace WindowsApp.Windows
         {
             UpdateStatusBar();
             AddCrawlMatchedLog(matchedresult);
+            Dispatcher.BeginInvoke(() => RebuildMatchedResultsView());
+
+            if (matchedresult.IsSuppressed)
+                return;
 
             TryPlayCompleteSound();
 
@@ -187,7 +206,7 @@ namespace WindowsApp.Windows
             {
                 _soundPlaying = true;
                 var player = new System.Media.SoundPlayer(wavPath);
-				player.Play();
+                player.Play();
                 Task.Run(() =>
                 {
                     try
@@ -255,6 +274,8 @@ namespace WindowsApp.Windows
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
+            _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
+            _cbCrawlMethod.SelectedIndex = (int)_crawlTaskManager.CrawlMethod;
         }
 
         private void MainWindow_OnClosed(object? sender, EventArgs e)
@@ -270,7 +291,9 @@ namespace WindowsApp.Windows
         private void MainWindow_OnMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
-                this.DragMove();
+            {
+                try { DragMove(); } catch { }
+            }
         }
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
@@ -468,10 +491,53 @@ namespace WindowsApp.Windows
             });
         }
 
+        private void _tgbMatchedType_OnChecked(object sender, RoutedEventArgs e)
+        {
+            if (sender == _tgbMatchedFM && _tgbMatchedDC != null)
+                _tgbMatchedDC.IsChecked = false;
+            else if (sender == _tgbMatchedDC && _tgbMatchedFM != null)
+                _tgbMatchedFM.IsChecked = false;
+
+            RebuildMatchedResultsView();
+        }
+
+        private void RebuildMatchedResultsView()
+        {
+            if (_dgMatchedResults == null)
+                return;
+
+            int crawlType = _tgbMatchedFM.IsChecked == true ? CrawlType.FMKorea : CrawlType.DCInside;
+            int maxCount = _crawlTaskManager.MaxMatchedDisplayCount;
+            var results = _crawlTaskManager.GetMatchedResults(crawlType, maxCount);
+            var list = results.Select(r => new MatchedResultView
+            {
+                PostId = r.Result.PostId,
+                Title = r.Result.Title,
+                Name = r.Result.Name,
+                WriteDate = r.Result.WriteDate.ToString("yyyy-MM-dd HH:mm"),
+                Url = r.Result.Url
+            }).ToList();
+
+            _dgMatchedResults.ItemsSource = list;
+        }
+
+        private void TitleTextBlock_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBlock tb && tb.DataContext is MatchedResultView item && !string.IsNullOrWhiteSpace(item.Url))
+                Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
+        }
+
+        private void _dgMatchedResults_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (_dgMatchedResults.SelectedItem is MatchedResultView item && !string.IsNullOrWhiteSpace(item.Url))
+                Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
+        }
+
       
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
             _windowLoaded = true;
+            RebuildMatchedResultsView();
         }
 
         private void _chkbFMCrawlSearchOptionEnable_OnChecked(object sender, RoutedEventArgs e)
@@ -822,6 +888,12 @@ namespace WindowsApp.Windows
                 return;
             }
 
+            if (int.TryParse(_tbMaxMatchedDisplayCount.Text, out int maxDisplayCount) && maxDisplayCount > 0)
+                _crawlTaskManager.MaxMatchedDisplayCount = maxDisplayCount;
+
+            _crawlTaskManager.CrawlMethod = (WebCrawlMethod)_cbCrawlMethod.SelectedIndex;
+            AbstractCrawl.Method = _crawlTaskManager.CrawlMethod;
+
             _crawlTaskManager.CrawlDelay[CrawlType.DCInside] = dcCrawlDelay;
             _crawlTaskManager.CrawlDelay[CrawlType.FMKorea] = fmCrawlDelay;
 
@@ -856,6 +928,8 @@ namespace WindowsApp.Windows
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
+            _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
+            _cbCrawlMethod.SelectedIndex = (int)_crawlTaskManager.CrawlMethod;
             AddNoticeLog("설정 리로드 완료");
         }
 

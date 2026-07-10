@@ -88,9 +88,11 @@ namespace RequestApi.Crawl
                 if (IsMatchedResult(result, matchedTime))
                 {
                     _manager.Stat.RequestMatchedCount++;
-                    _manager.OnCrawlMatched?.Invoke(this, new MatchedCrawlResult(result, matchedTime));
+                    _manager.NotifyMatched(this, new MatchedCrawlResult(result, matchedTime));
                 }
             }
+
+            _manager.MarkTaskFirstCycleDone(this);
 
         }
 

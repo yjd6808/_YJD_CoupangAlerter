@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -28,6 +29,31 @@ namespace RequestApi.Crawl
     public class CrawlTaskManager
     {
         public bool Running => _running;
+        public int TaskCount
+        {
+            get { lock (this) return _crawlList.Count; }
+        }
+
+        public int MaxMatchedDisplayCount { get; set; } = 100;
+        public WebCrawlMethod CrawlMethod { get; set; } = WebCrawlMethod.AppWebRequest;
+
+        public void NotifyMatched(CrawlTask task, MatchedCrawlResult result)
+        {
+            lock (this)
+            {
+                _completedResults[task.CrawlType][result.Result.PostId] = result;
+                result.IsSuppressed = !_tasksWithDoneFirstCycle.Contains(task.UID);
+            }
+
+            OnCrawlMatched?.Invoke(task, result);
+        }
+
+        public void MarkTaskFirstCycleDone(CrawlTask task)
+        {
+            lock (this)
+                _tasksWithDoneFirstCycle.Add(task.UID);
+        }
+
         public bool HasTask
         {
             get
@@ -59,7 +85,8 @@ namespace RequestApi.Crawl
         private Thread _workerThread;
 
         private readonly List<CrawlTask> _crawlList;
-        private readonly List<MatchedCrawlResult> _completedResults;     // 매칭된 게시글 결과들. (매칭 될 때마다 기록을 해서 중복 검출이 되지 않도록 막아준다.)
+        private readonly SortedDictionary<long, MatchedCrawlResult>[] _completedResults;
+        private readonly HashSet<long> _tasksWithDoneFirstCycle;         // 첫 번째 크롤링 사이클 완료 여부
 
         private readonly CrawlTaskWorker[] _taskWorkers;
         private readonly AutoResetEvent[] _taskWaitors;
@@ -75,7 +102,6 @@ namespace RequestApi.Crawl
 
         private string s_configDirName = null;
         private readonly string s_taskFileName = "tasks.json";             // 현재 진행중인 작업 저장용
-        private readonly string s_completeFileName = "today.json";         // 중복 검출 방지를 위한 목록 (저장 기간 1일)
 
         public CrawlTaskManager()
         {
@@ -91,7 +117,10 @@ namespace RequestApi.Crawl
             _crawlDelay[CrawlType.DCInside] = 180000;
             _crawlDelay[CrawlType.FMKorea] = 300000;
             _crawlList = new List<CrawlTask>();
-            _completedResults = new List<MatchedCrawlResult>();
+            _completedResults = new SortedDictionary<long, MatchedCrawlResult>[CrawlType.Max];
+            for (int i = 0; i < CrawlType.Max; i++)
+                _completedResults[i] = new SortedDictionary<long, MatchedCrawlResult>(new DescendingLongComparer());
+            _tasksWithDoneFirstCycle = new HashSet<long>();
 
             _taskWorkers = new CrawlTaskWorker[CrawlType.Max];
 
@@ -110,12 +139,6 @@ namespace RequestApi.Crawl
                 _taskWaitors[CrawlType.DCInside],
                 CrawlType.DCInside
             );
-
-            OnCrawlMatched += (crawl, result) =>
-            {
-                lock (this)
-                    _completedResults.Add(result);
-            };
         }
 
         public void SetConfigDirectory(string path)
@@ -161,7 +184,7 @@ namespace RequestApi.Crawl
             }
 
             /*
-
+            
             _running = false; // ---> 잘못된 코드
              
             _running = false는 무조건 맨 위에서 실행해줘야한다. 이렇게 안해주면 데드락 걸림
@@ -174,54 +197,6 @@ namespace RequestApi.Crawl
 
             _workerThread.Join();
             _workerThread = null;
-
-            SaveCompleteFile();
-        }
-
-        public bool TryLoadCompleteFile()
-        {
-            if (Running)
-                return false;
-
-            _completedResults.Clear();
-
-            try
-            {
-                string loadDir = Path.Combine(Environment.CurrentDirectory, s_configDirName);
-                string loadCompletFilePath = Path.Combine(loadDir, s_completeFileName);
-
-                if (!File.Exists(loadCompletFilePath))
-                    return false;
-
-                JObject root = JObject.Parse(File.ReadAllText(loadCompletFilePath));
-                JArray matchArray = root["matches"] as JArray;
-
-                foreach (JObject match in matchArray)
-                {
-                    int crawlType = int.Parse(match["crawlType"].ToString());
-                    long postId = long.Parse(match["postId"].ToString());
-                    DateTime matchedTime = DateTime.Parse(match["matchedTime"].ToString());
-                    string url = match["url"].ToString();
-                    string title = match["title"].ToString();
-                    string name = match["name"].ToString();
-                    DateTime writeDate = DateTime.Parse(match["writeDate"].ToString());
-                    long viewCount = long.Parse(match["viewCount"].ToString());
-                    long recommendCount = long.Parse(match["recommendCount"].ToString());
-
-                    CrawlResult crawlResult = new CrawlResult(postId, url, title, name, writeDate, viewCount, recommendCount, crawlType);
-                    _completedResults.Add(new MatchedCrawlResult(crawlResult, matchedTime));
-                }
-
-                return true;
-            }
-            catch (Exception e)
-            {
-#if DEBUG
-                throw;
-#else
-                return false;
-#endif
-            }
         }
 
 
@@ -248,6 +223,9 @@ namespace RequestApi.Crawl
                 _blockedCrawl[CrawlType.DCInside] = bool.Parse(root["dcCrawlBlocked"].ToString());
                 _blockedCrawl[CrawlType.FMKorea] = bool.Parse(root["fmCrawlBlocked"].ToString());
                 CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
+                MaxMatchedDisplayCount = root["maxMatchedDisplayCount"] != null ? int.Parse(root["maxMatchedDisplayCount"].ToString()) : 100;
+                CrawlMethod = root["crawlMethod"] != null ? (WebCrawlMethod)int.Parse(root["crawlMethod"].ToString()) : WebCrawlMethod.AppWebRequest;
+                AbstractCrawl.Method = CrawlMethod;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
                 _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
@@ -357,44 +335,10 @@ namespace RequestApi.Crawl
             root.Add("dcCrawlBlocked", _blockedCrawl[CrawlType.DCInside]);
             root.Add("fmCrawlBlocked", _blockedCrawl[CrawlType.FMKorea]);
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
+            root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
+            root.Add("crawlMethod", (int)CrawlMethod);
 
             File.WriteAllText(saveFilePath, root.ToString());
-        }
-
-        public void SaveCompleteFile() 
-        {
-            string saveDir = Path.Combine(Environment.CurrentDirectory, s_configDirName);
-            string saveCompletFilePath = Path.Combine(saveDir, s_completeFileName);
-
-            if (!Directory.Exists(saveDir))
-                Directory.CreateDirectory(saveDir);
-
-            JObject root = new JObject();
-            JArray matchArray = new JArray();
-
-            lock (this)
-            {
-                _completedResults.ForEach(matchResult =>
-                {
-                    if (DateTime.Now - matchResult.MatchedTime >= ExpiredDuration)
-                        return;
-
-                    CrawlResult result = matchResult.Result;
-                    JObject matchObj = new JObject();
-                    matchObj.Add("crawlType", result.CrawlType);
-                    matchObj.Add("postId", result.PostId);
-                    matchObj.Add("matchedTime", matchResult.MatchedTime);
-                    matchObj.Add("url", result.Url);
-                    matchObj.Add("title", result.Title);
-                    matchObj.Add("name", result.Name);
-                    matchObj.Add("writeDate", result.WriteDate);
-                    matchObj.Add("viewCount", result.ViewCount);
-                    matchObj.Add("recommendCount", result.Recommend);
-                    matchArray.Add(matchObj);
-                });
-            }
-            root.Add("matches", matchArray);
-            File.WriteAllText(saveCompletFilePath, root.ToString());
         }
 
         public void ForEach(Action<CrawlTask> action)
@@ -493,8 +437,10 @@ namespace RequestApi.Crawl
         public void ClearCompletes()
         {
             lock (this)
-                _completedResults.Clear();
-            SaveCompleteFile();
+            {
+                for (int i = 0; i < CrawlType.Max; i++)
+                    _completedResults[i].Clear();
+            }
         }
 
 
@@ -517,8 +463,15 @@ namespace RequestApi.Crawl
 
                 lock (this)
                 {
-                    // 기간이 지난 이미 매칭되었던 결과물들은 주기적으로 정리해주자.
-                    _completedResults.RemoveAll(result => DateTime.Now - result.MatchedTime >= ExpiredDuration);
+                    for (int i = 0; i < CrawlType.Max; i++)
+                    {
+                        var expiredKeys = _completedResults[i]
+                            .Where(kv => DateTime.Now - kv.Value.MatchedTime >= ExpiredDuration)
+                            .Select(kv => kv.Key)
+                            .ToArray();
+                        foreach (var key in expiredKeys)
+                            _completedResults[i].Remove(key);
+                    }
 
                     // 작업을 분배해줘야하는데 이미 작업을 진행중인 워커 쓰레드(readyToWork가 true)는 분배해주면 안된다.
                     foreach (var crawlTask in _crawlList)
@@ -567,11 +520,24 @@ namespace RequestApi.Crawl
             Debug.WriteLine("[분배 쓰레드가 종료되었습니다.]");
         }
 
+        public MatchedCrawlResult[] GetMatchedResults(int crawlType, int maxCount)
+        {
+            lock (this)
+            {
+            return _completedResults[crawlType]
+                .Values
+                .OrderByDescending(r => r.Result.WriteDate)
+                .ThenByDescending(r => r.Result.PostId)
+                .Take(maxCount)
+                .ToArray();
+            }
+        }
+
         public bool CheckAlreadyMatchedResult(CrawlResult result)
         {
             lock (this)
             {
-                return _completedResults.Find(x => x.Result.Equals(result)) != null;
+                return _completedResults[result.CrawlType].ContainsKey(result.PostId);
             }
         }
 
@@ -606,6 +572,14 @@ namespace RequestApi.Crawl
             private long _requestFailedCount = 0L;
             private long _requestSuccessCount = 0L;
             private long _requestMatchedCount = 0L;
+        }
+
+        private class DescendingLongComparer : IComparer<long>
+        {
+            public int Compare(long x, long y)
+            {
+                return y.CompareTo(x);
+            }
         }
     }
 }

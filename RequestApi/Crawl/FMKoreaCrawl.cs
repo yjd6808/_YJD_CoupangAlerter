@@ -232,7 +232,7 @@ namespace RequestApi.Crawl
                     postId,
                     boardType,
                     todayPost,
-                    MainUrl + url,
+                    $"{MainUrl}/{postId}",
                     title,
                     name,
                     writeDate,

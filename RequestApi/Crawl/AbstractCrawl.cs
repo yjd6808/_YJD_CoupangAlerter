@@ -12,12 +12,17 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading;
 using HtmlAgilityPack;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RequestApi.Crawl.Result;
 
 namespace RequestApi.Crawl
 {
     public abstract class AbstractCrawl
     {
+        public static WebCrawlMethod Method { get; set; } = WebCrawlMethod.AppWebRequest;
+        public const int WebFetchPort = 18563;
+
         public int Type { get; }
         public Uri CrawlUrl { get; }
 
@@ -67,6 +72,14 @@ namespace RequestApi.Crawl
 
         protected bool TryDonwloadSource(out string content)
         {
+            if (Method == WebCrawlMethod.ExternalAppWebRequest)
+                return TryDownloadSourceExternal(out content);
+
+            return TryDownloadSourceDirect(out content);
+        }
+
+        private bool TryDownloadSourceDirect(out string content)
+        {
             content = "";
 
 			HttpWebRequest req = (HttpWebRequest)WebRequest.Create(CrawlUrl);
@@ -92,6 +105,49 @@ namespace RequestApi.Crawl
 
             content = Encoding.UTF8.GetString(totalRecv, 0, offset);
             return true;
+        }
+
+        private bool TryDownloadSourceExternal(out string content)
+        {
+            content = "";
+
+            try
+            {
+                string fetchUrl = $"http://localhost:{WebFetchPort}/";
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(fetchUrl);
+                req.Method = "POST";
+                req.ContentType = "application/json; charset=utf-8";
+                req.UserAgent = "CoupangAlerter/1.0";
+                req.Timeout = 30000;
+
+                string requestBody = JsonConvert.SerializeObject(new { url = CrawlUrl.AbsoluteUri });
+                byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
+                req.ContentLength = requestBodyBytes.Length;
+
+                using (Stream stream = req.GetRequestStream())
+                    stream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
+
+                using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
+                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                {
+                    string responseJson = reader.ReadToEnd();
+                    JObject obj = JObject.Parse(responseJson);
+
+                    if (obj["error"] != null)
+                    {
+                        content = "";
+                        return false;
+                    }
+
+                    content = obj["content"]?.ToString() ?? "";
+                    return true;
+                }
+            }
+            catch
+            {
+                content = "";
+                return false;
+            }
         }
 
         public abstract AbstractCrawl Clone();

@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:WindowsApp"
         mc:Ignorable="d"
         Height="770"
-        Width="400"
+        Width="1100"
         Closing="MainWindow_OnClosing"
          Closed="MainWindow_OnClosed"
         WindowStyle="None"
@@ -14,8 +14,12 @@
         MouseDown="MainWindow_OnMouseDown"
         Loaded="MainWindow_OnLoaded"
         xmlns:dbg="debug-mode"
-        ResizeMode="NoResize">
+        ResizeMode="CanResize">
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="400"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"></RowDefinition>
             <RowDefinition Height="200"></RowDefinition>
@@ -418,6 +422,44 @@
                                 Click="_btnReloadSetting_OnClick"
                                 Content="설정 리로드"
                                 Height="30" />
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="표시할 매칭 결과 갯수"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Column="1"
+                                     Name="_tbMaxMatchedDisplayCount"
+                                     Text="100"
+                                     PreviewTextInput="Number_PreviewTextInput" />
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="크롤링 방식"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <ComboBox Grid.Column="1"
+                                      Name="_cbCrawlMethod"
+                                      SelectedIndex="0">
+                                <ComboBoxItem>앱 직접 요청 (HttpWebRequest)</ComboBoxItem>
+                                <ComboBoxItem>외부 프로그램 (WebFetch)</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
                     </StackPanel>
                 </TabItem>
 
@@ -535,5 +577,66 @@
         </DockPanel>
         
 
+        <!-- Column 1 -->
+        <TabControl Grid.Column="1"
+                    Grid.RowSpan="4"
+                    Margin="5, 0, 0, 0">
+            <TabItem Header="매칭 목록">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+
+                        <ToggleButton Name="_tgbMatchedFM"
+                                     Grid.Column="0"
+                                     Content="FM"
+                                     IsChecked="True"
+                                     Checked="_tgbMatchedType_OnChecked" />
+                        <ToggleButton Name="_tgbMatchedDC"
+                                     Grid.Column="1"
+                                     Content="DC"
+                                     Checked="_tgbMatchedType_OnChecked" />
+                    </Grid>
+
+                    <DataGrid Grid.Row="1"
+                              Name="_dgMatchedResults"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="None"
+                              IsReadOnly="True"
+                              MouseDoubleClick="_dgMatchedResults_OnMouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="PostId"
+                                                Binding="{Binding PostId}"
+                                                Width="110" />
+                            <DataGridTemplateColumn Header="제목"
+                                                    Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Title}"
+                                                   TextDecorations="Underline"
+                                                   Foreground="Blue"
+                                                   Cursor="Hand"
+                                                   MouseLeftButtonUp="TitleTextBlock_OnMouseLeftButtonUp" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="글쓴이"
+                                                Binding="{Binding Name}"
+                                                Width="80" />
+                            <DataGridTextColumn Header="쓴 시각"
+                                                Binding="{Binding WriteDate}"
+                                                Width="150" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
