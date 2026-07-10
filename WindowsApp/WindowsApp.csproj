@@ -23,10 +23,14 @@
   </ItemGroup>
 
   <Target Name="CopyWebFetchOutput" AfterTargets="Build">
-    <MSBuild Projects="..\WebFetch\WebFetch.csproj" Targets="Build" Properties="Configuration=$(Configuration)">
-      <Output TaskParameter="TargetOutputs" ItemName="WebFetchOutput" />
-    </MSBuild>
-    <Copy SourceFiles="@(WebFetchOutput)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <MSBuild Projects="..\WebFetch\WebFetch.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+    <PropertyGroup>
+      <WebFetchOutputDir>..\WebFetch\bin\$(Configuration)\net6.0\</WebFetchOutputDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <WebFetchFiles Include="$(WebFetchOutputDir)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WebFetchFiles)" DestinationFolder="$(OutputPath)%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup>
