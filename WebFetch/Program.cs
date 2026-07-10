@@ -54,7 +54,7 @@ namespace WebFetch
             var page = await browser.NewPageAsync();
             await page.GotoAsync(url, new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
+                WaitUntil = WaitUntilState.Load,
                 Timeout = 30000
             });
             return await page.ContentAsync();
