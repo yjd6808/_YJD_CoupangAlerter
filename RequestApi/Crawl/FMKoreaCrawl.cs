@@ -137,7 +137,14 @@ namespace RequestApi.Crawl
             HtmlNodeCollection collection = document.DocumentNode.SelectNodes("//table[contains(@class, 'bd_lst')]//tr[not(contains(@class, 'ad_wrapper'))]");
 
             if (collection == null)
-                return null;
+            {
+                string html = document.DocumentNode.OuterHtml ?? "";
+                // 검색 결과가 0건이면 FM은 목록 테이블 없이 안내 문구만 출력한다. 이 경우는 정상(빈 목록)으로 처리한다.
+                if (html.Contains("등록된 글이 없습니다") || html.Contains("검색 결과가 없습니다") || html.Contains("게시물이 없습니다"))
+                    return results;
+
+                throw new Exception("게시글 목록(bd_lst)을 찾지 못했습니다. FM 검색은 로그인이 필수이므로 프로그램 설정 > FM 로그인에서 로그인 후 다시 시도하세요. 로그인 상태인데도 뜨면 사이트 구조 변경일 수 있습니다.");
+            }
 
             foreach (HtmlNode node in collection)
             {

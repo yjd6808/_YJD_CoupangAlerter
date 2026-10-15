@@ -54,7 +54,13 @@ namespace RequestApi.Crawl
             HtmlNodeCollection collection = document.DocumentNode.SelectNodes("//tr[contains(@class, 'ub-content') and contains(@class, 'us-post')]");
 
             if (collection == null)
-                return null;
+            {
+                string html = document.DocumentNode.OuterHtml ?? "";
+                if (html.Contains("등록된 글이 없습니다") || html.Contains("검색 결과가 없습니다") || html.Contains("게시물이 없습니다"))
+                    return results;
+
+                throw new Exception("게시글 목록(ub-content/us-post)을 찾지 못했습니다. 차단 또는 구조 변경일 수 있으므로 크롤링 방식을 '외부 프로그램 (WebFetch)'으로 변경 후 다시 시도하세요.");
+            }
            
             foreach (HtmlNode node in collection)
             {

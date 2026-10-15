@@ -37,6 +37,10 @@ namespace RequestApi.Crawl
         public int MaxMatchedDisplayCount { get; set; } = 100;
         public WebCrawlMethod CrawlMethod { get; set; } = WebCrawlMethod.AppWebRequest;
 
+        // FM 로그인 계정. 비밀번호는 평문으로 config/tasks.json에 저장된다.
+        public string FmLoginId { get; set; } = "";
+        public string FmLoginPw { get; set; } = "";
+
         public void NotifyMatched(CrawlTask task, MatchedCrawlResult result)
         {
             lock (this)
@@ -225,6 +229,8 @@ namespace RequestApi.Crawl
                 CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
                 MaxMatchedDisplayCount = root["maxMatchedDisplayCount"] != null ? int.Parse(root["maxMatchedDisplayCount"].ToString()) : 100;
                 CrawlMethod = root["crawlMethod"] != null ? (WebCrawlMethod)int.Parse(root["crawlMethod"].ToString()) : WebCrawlMethod.AppWebRequest;
+                FmLoginId = root["fmLoginId"] != null ? root["fmLoginId"].ToString() : "";
+                FmLoginPw = root["fmLoginPw"] != null ? root["fmLoginPw"].ToString() : "";
                 AbstractCrawl.Method = CrawlMethod;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
@@ -337,6 +343,8 @@ namespace RequestApi.Crawl
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
             root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
             root.Add("crawlMethod", (int)CrawlMethod);
+            root.Add("fmLoginId", FmLoginId);
+            root.Add("fmLoginPw", FmLoginPw);
 
             File.WriteAllText(saveFilePath, root.ToString());
         }

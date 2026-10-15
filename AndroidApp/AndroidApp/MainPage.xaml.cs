@@ -489,7 +489,14 @@ namespace AndroidApp
             else if (_tbcCrawl.TabItems[CrawlType.FMKorea].IsSelected)
             {
                 FMBoardType boardType = (FMBoardType)_cbFMCrawlCategory.SelectedIndex;
-                int.TryParse(_tbDCCrawlPage.Text, out int page);
+                int.TryParse(_tbFMCrawlPage.Text, out int page);
+
+                if (page <= 0)
+                {
+                    this.DisplayAlertFireAndForget("페이지를 입력해주세요.");
+                    return false;
+                }
+
                 FMSearchOption searchOption = FMSearchOption.None;
                 string searchContent = "";
 

@@ -458,8 +458,70 @@
                                       SelectedIndex="0">
                                 <ComboBoxItem>앱 직접 요청 (HttpWebRequest)</ComboBoxItem>
                                 <ComboBoxItem>외부 프로그램 (WebFetch)</ComboBoxItem>
+                                <ComboBoxItem>열린 Edge 직접 제어 (UIA)</ComboBoxItem>
                             </ComboBox>
                         </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="FM 아이디"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Column="1"
+                                     Name="_tbFMLoginId" />
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="FM 비밀번호"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <PasswordBox Grid.Column="1"
+                                         Name="_pbFMLoginPw" />
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    x:Name="_btnFMLogin"
+                                    Click="_btnFMLogin_OnClicked"
+                                    Content="FM 로그인" />
+                            <TextBlock Grid.Column="1"
+                                       Grid.ColumnSpan="2"
+                                       Name="_tblFMLoginStatus"
+                                       Text="미로그인"
+                                       VerticalAlignment="Center"
+                                       Margin="10, 0, 0, 0" />
+                        </Grid>
+
+                        <Button x:Name="_btnFMEdgeKill"
+                                Click="_btnFMEdgeKill_OnClicked"
+                                Content="Edge 완전 종료"
+                                Height="30" />
+
+                        <Button x:Name="_btnFMEdgeImport"
+                                Click="_btnFMEdgeImport_OnClicked"
+                                Content="Edge 세션 가져오기"
+                                Height="30" />
                     </StackPanel>
                 </TabItem>
 

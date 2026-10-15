@@ -37,6 +37,16 @@
     <PackageReference Include="System.Speech" Version="6.0.0" />
   </ItemGroup>
 
+  <!-- Edge 직접 제어(UIA)용. .NET Framework 내장 어셈블리를 그대로 참조한다. -->
+  <ItemGroup>
+    <Reference Include="UIAutomationClient">
+      <HintPath>C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF\UIAutomationClient.dll</HintPath>
+    </Reference>
+    <Reference Include="UIAutomationTypes">
+      <HintPath>C:\Windows\Microsoft.NET\Framework64\v4.0.30319\WPF\UIAutomationTypes.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <Resource Include="Resources\Icons\close_144.png" />
     <Resource Include="Resources\Icons\minimize.png" />
