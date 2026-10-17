@@ -275,6 +275,7 @@ namespace WindowsApp.Windows
             _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
+            _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
         }
 
         private void MainWindow_OnClosed(object? sender, EventArgs e)
@@ -922,6 +923,8 @@ namespace WindowsApp.Windows
             if (int.TryParse(_tbMaxMatchedDisplayCount.Text, out int maxDisplayCount) && maxDisplayCount > 0)
                 _crawlTaskManager.MaxMatchedDisplayCount = maxDisplayCount;
 
+            _crawlTaskManager.EdgeWindowMode = (EdgeWindowMode)_cbEdgeWindowMode.SelectedIndex;
+
             _crawlTaskManager.CrawlDelay[CrawlType.DCInside] = dcCrawlDelay;
             _crawlTaskManager.CrawlDelay[CrawlType.FMKorea] = fmCrawlDelay;
 
@@ -956,6 +959,7 @@ namespace WindowsApp.Windows
             _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
+            _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             AddNoticeLog("설정 리로드 완료");
         }
 

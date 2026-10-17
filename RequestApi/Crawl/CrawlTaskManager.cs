@@ -36,6 +36,9 @@ namespace RequestApi.Crawl
 
         public int MaxMatchedDisplayCount { get; set; } = 100;
 
+        // 크롤링 시 엣지 페이지를 여는 방식 (새 탭 / 새 창 / 새 창 숨김)
+        public EdgeWindowMode EdgeWindowMode { get; set; } = EdgeWindowMode.Tab;
+
         public void NotifyMatched(CrawlTask task, MatchedCrawlResult result)
         {
             lock (this)
@@ -223,6 +226,7 @@ namespace RequestApi.Crawl
                 _blockedCrawl[CrawlType.FMKorea] = bool.Parse(root["fmCrawlBlocked"].ToString());
                 CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
                 MaxMatchedDisplayCount = root["maxMatchedDisplayCount"] != null ? int.Parse(root["maxMatchedDisplayCount"].ToString()) : 100;
+                EdgeWindowMode = root["edgeWindowMode"] != null ? (EdgeWindowMode)int.Parse(root["edgeWindowMode"].ToString()) : EdgeWindowMode.Tab;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
                 _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
@@ -333,6 +337,7 @@ namespace RequestApi.Crawl
             root.Add("fmCrawlBlocked", _blockedCrawl[CrawlType.FMKorea]);
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
             root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
+            root.Add("edgeWindowMode", (int)EdgeWindowMode);
 
             File.WriteAllText(saveFilePath, root.ToString());
         }

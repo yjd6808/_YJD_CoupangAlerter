@@ -69,7 +69,7 @@ namespace RequestApi.Crawl
 
             _manager.Stat.RequestCount++;
             _manager.OnCrawlRequest?.Invoke(this);
-            List<CrawlResult> crawlResult = Crawl.TryCrawl(out string errorMessage);
+            List<CrawlResult> crawlResult = Crawl.TryCrawl(_manager.EdgeWindowMode, out string errorMessage);
             DateTime matchedTime = DateTime.Now;
             
 

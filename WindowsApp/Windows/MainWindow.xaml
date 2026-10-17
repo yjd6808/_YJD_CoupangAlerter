@@ -441,6 +441,27 @@
                                      PreviewTextInput="Number_PreviewTextInput" />
                         </Grid>
 
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="엣지 창 모드"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <ComboBox Grid.Column="1"
+                                      Name="_cbEdgeWindowMode"
+                                      SelectedIndex="0">
+                                <ComboBoxItem>새 탭</ComboBoxItem>
+                                <ComboBoxItem>새 창</ComboBoxItem>
+                                <ComboBoxItem>새 창 (숨김)</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+
                     </StackPanel>
                 </TabItem>
 

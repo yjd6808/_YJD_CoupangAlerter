@@ -47,7 +47,7 @@ namespace RequestApi.Crawl
         protected abstract List<CrawlResult> ParseContent(HtmlDocument document);
 
         // 실패시 null
-        public List<CrawlResult> TryCrawl(out string errorMessage)
+        public List<CrawlResult> TryCrawl(EdgeWindowMode windowMode, out string errorMessage)
         {
             errorMessage = "";
 
@@ -55,7 +55,7 @@ namespace RequestApi.Crawl
             {
                 string content = "";
 
-                if (!TryDownloadSource(out content))
+                if (!TryDownloadSource(windowMode, out content))
                 {
                     errorMessage = $"[{CrawlType.ToStringInitial(Type)}] HTML 다운로드 실패";
                     return null;
@@ -90,7 +90,7 @@ namespace RequestApi.Crawl
 
         // WebFetch.exe(Playwright)로 크롤링한다.
         // WebFetch는 실행 중인 엣지(9222 포트)에 CDP로 접속해 HTML을 가져온다.
-        private bool TryDownloadSource(out string content)
+        private bool TryDownloadSource(EdgeWindowMode windowMode, out string content)
         {
             content = "";
 
@@ -101,7 +101,7 @@ namespace RequestApi.Crawl
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = webFetchPath,
-                Arguments = CrawlUrl.AbsoluteUri,
+                Arguments = $"{CrawlUrl.AbsoluteUri} {ToCliWindowMode(windowMode)}",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -139,6 +139,20 @@ namespace RequestApi.Crawl
                 return output;
 
             return Regex.Replace(output, "\x1B\\[[0-9;]*[A-Za-z]", "").Trim();
+        }
+
+        // 엣지 창 모드를 WebFetch.exe의 두 번째 인자(tab|window|hidden)로 변환한다.
+        private static string ToCliWindowMode(EdgeWindowMode windowMode)
+        {
+            switch (windowMode)
+            {
+                case EdgeWindowMode.Window:
+                    return "window";
+                case EdgeWindowMode.Hidden:
+                    return "hidden";
+                default:
+                    return "tab";
+            }
         }
 
         public abstract AbstractCrawl Clone();
