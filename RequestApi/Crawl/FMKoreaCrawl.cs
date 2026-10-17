@@ -143,7 +143,7 @@ namespace RequestApi.Crawl
                 if (html.Contains("등록된 글이 없습니다") || html.Contains("검색 결과가 없습니다") || html.Contains("게시물이 없습니다"))
                     return results;
 
-                throw new Exception("게시글 목록(bd_lst)을 찾지 못했습니다. FM 검색은 로그인이 필수이므로 프로그램 설정 > FM 로그인에서 로그인 후 다시 시도하세요. 로그인 상태인데도 뜨면 사이트 구조 변경일 수 있습니다.");
+                throw new Exception("게시글 목록(bd_lst)을 찾지 못했습니다. FM 검색은 로그인이 필수이므로 엣지 브라우저에서 에펨코리아에 로그인한 뒤 다시 시도하세요. 로그인 상태인데도 뜨면 사이트 구조 변경일 수 있습니다.");
             }
 
             foreach (HtmlNode node in collection)

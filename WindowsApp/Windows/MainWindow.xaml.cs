@@ -30,7 +30,6 @@ using RequestApi.Crawl;
 using RequestApi.Crawl.Result;
 using RequestApi.Utils;
 using WindowsApp.Classes.Utils;
-using WindowsApp.Classes.Crawl;
 
 namespace WindowsApp.Windows
 {
@@ -89,7 +88,6 @@ namespace WindowsApp.Windows
 
         public MainWindow()
         {
-            AbstractCrawl.EdgeUiFetchHandler = EdgeUiaFetch.Fetch;
             _crawlTaskManager.SetConfigDirectory(System.IO.Path.Combine(Environment.CurrentDirectory, "config"));
             _crawlTaskManager.TryLoadTaskFile();
             _crawlTaskManager.OnCrawlRequest += OnCrawlRequest;
@@ -277,10 +275,6 @@ namespace WindowsApp.Windows
             _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
-            _cbCrawlMethod.SelectedIndex = (int)_crawlTaskManager.CrawlMethod;
-            _tbFMLoginId.Text = _crawlTaskManager.FmLoginId;
-            _pbFMLoginPw.Password = _crawlTaskManager.FmLoginPw;
-            RefreshFMLoginStatus();
         }
 
         private void MainWindow_OnClosed(object? sender, EventArgs e)
@@ -575,8 +569,33 @@ namespace WindowsApp.Windows
 
      
 
+        // 9222 포트로 디버깅이 허용된 엣지 브라우저가 실행 중인지 확인한다.
+        // WebFetch(Playwright)가 이 엣지에 CDP로 접속해 크롤링하므로 필수 조건이다.
+        private static bool IsCdpEdgeRunning()
+        {
+            try
+            {
+                using (var client = new System.Net.Sockets.TcpClient())
+                {
+                    return client.ConnectAsync("127.0.0.1", 9222).Wait(1000) && client.Connected;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private void _btnStartCrawling_OnClick(object sender, RoutedEventArgs e)
         {
+            if (!IsCdpEdgeRunning())
+            {
+                MsgBox.ShowTopMost("실행 중인 엣지 브라우저가 없습니다.\n\n" +
+                    "엣지를 다음 옵션으로 실행한 뒤 다시 시작해주세요.\n\n" +
+                    "msedge.exe -user-data-dir=\"%LOCALAPPDATA%\\Edge-CDP\" --profile-directory=Default --remote-debugging-port=9222");
+                return;
+            }
+
             _crawlTaskManager.Start();
             _btnStartCrawling.IsEnabled = false;
             _btnStartCrawling.Foreground = _disabledForegroundColor;
@@ -903,11 +922,6 @@ namespace WindowsApp.Windows
             if (int.TryParse(_tbMaxMatchedDisplayCount.Text, out int maxDisplayCount) && maxDisplayCount > 0)
                 _crawlTaskManager.MaxMatchedDisplayCount = maxDisplayCount;
 
-            _crawlTaskManager.CrawlMethod = (WebCrawlMethod)_cbCrawlMethod.SelectedIndex;
-            AbstractCrawl.Method = _crawlTaskManager.CrawlMethod;
-            _crawlTaskManager.FmLoginId = _tbFMLoginId.Text.Trim();
-            _crawlTaskManager.FmLoginPw = _pbFMLoginPw.Password;
-
             _crawlTaskManager.CrawlDelay[CrawlType.DCInside] = dcCrawlDelay;
             _crawlTaskManager.CrawlDelay[CrawlType.FMKorea] = fmCrawlDelay;
 
@@ -915,236 +929,6 @@ namespace WindowsApp.Windows
             _crawlTaskManager.SaveTaskFile();
             AddNoticeLog("적용완료");
         }
-
-        private void _btnFMEdgeKill_OnClicked(object sender, RoutedEventArgs e)
-        {
-            // Edge 창을 먼저 정상 종료 시도하고, 남으면 강제 종료한다.
-            // 쿠키 파일이 잠겨 있으면 세션 가져오기가 실패하므로 그 전에 눌러준다.
-            _btnFMEdgeKill.IsEnabled = false;
-            _tblFMLoginStatus.Text = "Edge 종료 중...";
-
-            Task.Run(() =>
-            {
-                try
-                {
-                    Process[] procs = Process.GetProcessesByName("msedge");
-                    if (procs.Length == 0)
-                    {
-                        Dispatcher.BeginInvoke(() =>
-                        {
-                            _tblFMLoginStatus.Text = "실행 중인 Edge가 없습니다.";
-                            AddNoticeLog("Edge 종료: 실행 중인 Edge 없음");
-                        });
-                        return;
-                    }
-
-                    foreach (Process p in procs)
-                    {
-                        try
-                        {
-                            if (p.MainWindowHandle != IntPtr.Zero)
-                                p.CloseMainWindow();
-                        }
-                        catch { }
-                    }
-
-                    for (int i = 0; i < 20; i++)
-                    {
-                        Thread.Sleep(500);
-                        if (Process.GetProcessesByName("msedge").Length == 0)
-                            break;
-                    }
-
-                    foreach (Process p in Process.GetProcessesByName("msedge"))
-                    {
-                        try { p.Kill(); } catch { }
-                    }
-
-                    Thread.Sleep(2000);
-                    int left = Process.GetProcessesByName("msedge").Length;
-
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        _tblFMLoginStatus.Text = left == 0 ? "Edge 종료 완료" : $"Edge {left}개 프로세스 남음";
-                        AddNoticeLog(left == 0 ? "Edge 종료 완료" : $"Edge 종료: {left}개 남음");
-                        if (left != 0)
-                            MsgBox.ShowTopMost($"Edge 프로세스 {left}개가 남았습니다. 작업 관리자에서 msedge를 직접 종료하세요.");
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Dispatcher.BeginInvoke(() => MsgBox.ShowTopMost(ex.Message));
-                }
-                finally
-                {
-                    Dispatcher.BeginInvoke(() => { _btnFMEdgeKill.IsEnabled = true; });
-                }
-            });
-        }
-
-        private void _btnFMEdgeImport_OnClicked(object sender, RoutedEventArgs e)
-        {
-            // Edge에 로그인된 FM 세션을 그대로 가져온다.
-            // 쿠키 파일 잠금을 풀기 위해 Edge를 먼저 종료하므로 확인을 받는다.
-            if (MsgBox.ShowTopMost("Edge를 종료하고 FM 세션을 가져옵니다. 저장하지 않은 입력은 사라질 수 있습니다. 계속할까요?",
-                    "확인", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
-                return;
-
-            _btnFMEdgeImport.IsEnabled = false;
-            _tblFMLoginStatus.Text = "Edge 세션 가져오는 중...";
-
-            Task.Run(() =>
-            {
-                try
-                {
-                    string webFetchPath = System.IO.Path.Combine(Environment.CurrentDirectory, "WebFetch.exe");
-                    if (!System.IO.File.Exists(webFetchPath))
-                        throw new Exception($"WebFetch.exe를 찾을 수 없습니다: {webFetchPath}");
-
-                    ProcessStartInfo psi = new ProcessStartInfo
-                    {
-                        FileName = webFetchPath,
-                        Arguments = "--import-edge",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        StandardOutputEncoding = Encoding.UTF8,
-                        StandardErrorEncoding = Encoding.UTF8
-                    };
-
-                    using (Process p = Process.Start(psi))
-                    {
-                        string stdOut = p.StandardOutput.ReadToEnd();
-                        string stdErr = p.StandardError.ReadToEnd();
-
-                        if (!p.WaitForExit(180000))
-                        {
-                            try { p.Kill(); } catch { }
-                            throw new Exception("Edge 세션 가져오기 시간 초과 (180초).");
-                        }
-
-                        if (p.ExitCode != 0)
-                            throw new Exception(string.IsNullOrWhiteSpace(stdErr) ? "Edge 세션 가져오기 실패" : CleanProcessOutput(stdErr));
-
-                        stdOut = CleanProcessOutput(stdOut);
-                    }
-
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        RefreshFMLoginStatus();
-                        AddNoticeLog("Edge FM 세션 가져오기 완료");
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        RefreshFMLoginStatus();
-                        MsgBox.ShowTopMost(ex.Message);
-                    });
-                }
-                finally
-                {
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        _btnFMEdgeImport.IsEnabled = true;
-                    });
-                }
-            });
-        }
-
-        // 외부 프로세스(WebFetch/Playwright) 출력에 섞이는 ANSI 색상 코드를 제거한다.
-        // 안 그러면 에러 대화상자에 ESC 문자와 '[91m' 같은 조각이 그대로 보인다.
-        private static string CleanProcessOutput(string output)
-        {
-            if (string.IsNullOrEmpty(output))
-                return output;
-
-            string cleaned = Regex.Replace(output, "\x1B\\[[0-9;]*[A-Za-z]", "");
-            return cleaned.Trim();
-        }
-
-        private void RefreshFMLoginStatus()
-        {
-            try
-            {
-                string authPath = System.IO.Path.Combine(Environment.CurrentDirectory, AbstractCrawl.AuthFileName);
-                _tblFMLoginStatus.Text = System.IO.File.Exists(authPath) ? "세션 있음 (fm_auth.json)" : "미로그인";
-            }
-            catch
-            {
-                _tblFMLoginStatus.Text = "미로그인";
-            }
-        }
-
-        private void _btnFMLogin_OnClicked(object sender, RoutedEventArgs e)
-        {
-            // 수동 로그인: 보이는 브라우저 창을 띄우고 사용자가 직접 로그인한다.
-            // 자동 입력은 FM의 Turnstile을 통과하지 못한다. 계정 입력칸은 보관용이다.
-            _btnFMLogin.IsEnabled = false;
-            _tblFMLoginStatus.Text = "브라우저 창에서 직접 로그인하세요 (최대 5분)...";
-
-            Task.Run(() =>
-            {
-                try
-                {
-                    string webFetchPath = System.IO.Path.Combine(Environment.CurrentDirectory, "WebFetch.exe");
-                    if (!System.IO.File.Exists(webFetchPath))
-                        throw new Exception($"WebFetch.exe를 찾을 수 없습니다: {webFetchPath}");
-
-                    ProcessStartInfo psi = new ProcessStartInfo
-                    {
-                        FileName = webFetchPath,
-                        Arguments = "--login-manual",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        StandardOutputEncoding = Encoding.UTF8,
-                        StandardErrorEncoding = Encoding.UTF8
-                    };
-
-                    using (Process p = Process.Start(psi))
-                    {
-                        string stdErr = p.StandardError.ReadToEnd();
-                        p.StandardOutput.ReadToEnd();
-
-                        if (!p.WaitForExit(330000))
-                        {
-                            try { p.Kill(); } catch { }
-                            throw new Exception("로그인 시간 초과 (5분). 브라우저 창에서 로그인을 완료하지 못했습니다.");
-                        }
-
-                        if (p.ExitCode != 0)
-                            throw new Exception(string.IsNullOrWhiteSpace(stdErr) ? "로그인 실패" : CleanProcessOutput(stdErr));
-                    }
-
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        _tblFMLoginStatus.Text = "세션 있음 (fm_auth.json)";
-                        AddNoticeLog("FM 로그인 완료");
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        RefreshFMLoginStatus();
-                        MsgBox.ShowTopMost(ex.Message);
-                    });
-                }
-                finally
-                {
-                    // 입력칸은 유지한다. 계정은 적용 및 저장으로 config/tasks.json에 보관된다.
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        _btnFMLogin.IsEnabled = true;
-                    });
-                }
-            });
-        }
-        
 
         private void _btnClearCompletes_OnClicked(object sender, RoutedEventArgs e)
         {
@@ -1172,10 +956,6 @@ namespace WindowsApp.Windows
             _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
-            _cbCrawlMethod.SelectedIndex = (int)_crawlTaskManager.CrawlMethod;
-            _tbFMLoginId.Text = _crawlTaskManager.FmLoginId;
-            _pbFMLoginPw.Password = _crawlTaskManager.FmLoginPw;
-            RefreshFMLoginStatus();
             AddNoticeLog("설정 리로드 완료");
         }
 
