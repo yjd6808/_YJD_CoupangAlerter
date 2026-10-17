@@ -38,7 +38,7 @@ WindowsApp과 AndroidApp이 공용으로 사용한다.
 | CrawlResult.cs | 결과 공통 속성 (PostId, Url, Title, Name, WriteDate, ViewCount, Recommend) |
 | DCInsideCrawlResult.cs | DC 전용 속성 (말머리 Header, 익명 여부, 유저 ID) |
 | FMKoreaCrawlResult.cs | FM 전용 속성 (게시판 종류, 오늘 글 여부) |
-| MatchedCrawlResult.cs | 매칭된 결과 + 매칭 시각 + 첫 사이클 알림 억제 플래그 |
+| MatchedCrawlResult.cs | 매칭된 결과 + 매칭 시각 + 첫 사이클 메시지박스 억제 플래그 |
 
 ### Utils/
 

@@ -172,14 +172,14 @@ namespace WindowsApp.Windows
             AddCrawlMatchedLog(matchedresult);
             Dispatcher.BeginInvoke(() => RebuildMatchedResultsView());
 
-            if (matchedresult.IsSuppressed)
-                return;
-
             TryPlayCompleteSound();
 
-            Dispatcher.BeginInvoke(() =>
-                MsgBox.ShowTopMost($"[{CrawlType.ToStringInitial(matchedresult.Result.CrawlType)}] {matchedresult.Result.Title}", "매칭 결과")
-            );
+            if (!matchedresult.IsSuppressed)
+            {
+                Dispatcher.BeginInvoke(() =>
+                    MsgBox.ShowTopMost($"[{CrawlType.ToStringInitial(matchedresult.Result.CrawlType)}] {matchedresult.Result.Title}", "매칭 결과")
+                );
+            }
 
             if (_speeching)
                 return;
