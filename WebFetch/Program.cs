@@ -2,13 +2,14 @@
  * 작성자: 윤정도
  * * * * * * * * * * * * *
  * 
- * 사용자가 9222 포트로 열어둔 엣지 브라우저에 CDP로 접속해
+ * 사용자가 --remote-debugging-port 옵션으로 열어둔 엣지/크롬 브라우저에 CDP로 접속해
  * URL을 연 뒤 HTML을 표준출력으로 반환한다.
  * 
- * 사용법: WebFetch.exe <url> [tab|window|hidden]
- *   tab    : 기존 엣지 창에 새 탭으로 연다 (기본값)
- *   window : 새 엣지 창으로 연다
- *   hidden : 새 엣지 창을 최소화 상태로 열어 화면에 표시하지 않는다
+ * 사용법: WebFetch.exe <url> [tab|window|hidden] [port]
+ *   tab    : 기존 브라우저 창에 새 탭으로 연다 (기본값)
+ *   window : 새 브라우저 창으로 연다
+ *   hidden : 새 브라우저 창을 최소화 상태로 열어 화면에 표시하지 않는다
+ *   port   : CDP 포트 (기본값 9222)
  * 종료코드: 0 성공 / 1 실패 (실패 사유는 stderr)
  * * * * * * * * * * * * *
  */
@@ -24,8 +25,7 @@ namespace WebFetch
 {
     class Program
     {
-        private const int CdpPort = 9222;
-        private static string CdpEndpoint => $"http://127.0.0.1:{CdpPort}";
+        private const int DefaultCdpPort = 9222;
 
         static async Task<int> Main(string[] args)
         {
@@ -36,7 +36,7 @@ namespace WebFetch
 
             if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             {
-                Console.Error.WriteLine("Usage: WebFetch.exe <url> [tab|window|hidden]");
+                Console.Error.WriteLine("Usage: WebFetch.exe <url> [tab|window|hidden] [port]");
                 return 1;
             }
 
@@ -48,9 +48,16 @@ namespace WebFetch
                 return 1;
             }
 
+            int port = DefaultCdpPort;
+            if (args.Length >= 3 && (!int.TryParse(args[2].Trim(), out port) || port < 1 || port > 65535))
+            {
+                Console.Error.WriteLine($"알 수 없는 CDP 포트입니다: {args[2]} (1~65535)");
+                return 1;
+            }
+
             try
             {
-                string html = await FetchAsync(args[0], mode);
+                string html = await FetchAsync(args[0], mode, port);
                 Console.Write(html);
                 return 0;
             }
@@ -61,23 +68,23 @@ namespace WebFetch
             }
         }
 
-        static async Task<string> FetchAsync(string url, string mode)
+        static async Task<string> FetchAsync(string url, string mode, int port)
         {
             using var playwright = await Playwright.CreateAsync();
 
             IBrowser browser;
             try
             {
-                browser = await playwright.Chromium.ConnectOverCDPAsync(CdpEndpoint,
+                browser = await playwright.Chromium.ConnectOverCDPAsync($"http://127.0.0.1:{port}",
                     new BrowserTypeConnectOverCDPOptions { Timeout = 10000 });
             }
             catch (Exception)
             {
-                throw new Exception("실행 중인 엣지 브라우저에 접속하지 못했습니다. 엣지를 --remote-debugging-port=9222 옵션으로 실행하세요.");
+                throw new Exception($"CDP 포트 {port}에 접속하지 못했습니다. 엣지/크롬을 --remote-debugging-port={port} --user-data-dir=<전용폴더> 옵션으로 실행하세요.");
             }
 
             if (browser.Contexts.Count == 0)
-                throw new Exception("엣지에 열린 브라우저 컨텍스트가 없습니다.");
+                throw new Exception("브라우저에 열린 컨텍스트가 없습니다.");
 
             IBrowserContext context = browser.Contexts[0];
             IPage page = mode == "tab"
@@ -100,7 +107,7 @@ namespace WebFetch
             }
         }
 
-        // CDP Target.createTarget로 새 엣지 창을 생성한다.
+        // CDP Target.createTarget로 새 브라우저 창을 생성한다.
         // hidden 모드는 창을 최소화 상태로 생성해 화면에 표시하지 않는다.
         // 마지막 탭이 닫히면 창도 함께 닫힌다.
         //
@@ -156,7 +163,7 @@ namespace WebFetch
                 await Task.Delay(100);
             }
 
-            throw new Exception("새 엣지 창을 열지 못했습니다.");
+            throw new Exception("새 브라우저 창을 열지 못했습니다.");
         }
     }
 }

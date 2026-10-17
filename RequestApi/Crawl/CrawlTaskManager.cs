@@ -36,8 +36,21 @@ namespace RequestApi.Crawl
 
         public int MaxMatchedDisplayCount { get; set; } = 100;
 
-        // 크롤링 시 엣지 페이지를 여는 방식 (새 탭 / 새 창 / 새 창 숨김)
+        // 크롤링 시 브라우저 페이지를 여는 방식 (새 탭 / 새 창 / 새 창 숨김)
         public EdgeWindowMode EdgeWindowMode { get; set; } = EdgeWindowMode.Tab;
+
+        // 크롤링에 사용할 브라우저 (엣지 / 크롬)
+        public CrawlBrowser CrawlBrowser { get; set; } = CrawlBrowser.Edge;
+
+        // CDP 포트 자동 감지 여부. false면 수동으로 입력한 포트를 사용한다.
+        public bool CdpPortAuto { get; set; } = true;
+
+        // 수동 지정 CDP 포트
+        public int EdgeCdpPort { get; set; } = 9222;
+        public int ChromeCdpPort { get; set; } = 9223;
+
+        // 크롤링 시작 시 결정된 실제 사용 CDP 포트 (자동 감지 결과가 반영되며 파일에 저장하지 않는다)
+        public int CdpPort { get; set; } = 9222;
 
         public void NotifyMatched(CrawlTask task, MatchedCrawlResult result)
         {
@@ -227,6 +240,10 @@ namespace RequestApi.Crawl
                 CrawlTask.s_uidSeq = long.Parse(root["crawlTaskUidSeq"].ToString());
                 MaxMatchedDisplayCount = root["maxMatchedDisplayCount"] != null ? int.Parse(root["maxMatchedDisplayCount"].ToString()) : 100;
                 EdgeWindowMode = root["edgeWindowMode"] != null ? (EdgeWindowMode)int.Parse(root["edgeWindowMode"].ToString()) : EdgeWindowMode.Tab;
+                CrawlBrowser = root["crawlBrowser"] != null ? (CrawlBrowser)int.Parse(root["crawlBrowser"].ToString()) : CrawlBrowser.Edge;
+                CdpPortAuto = root["cdpPortAuto"] != null ? bool.Parse(root["cdpPortAuto"].ToString()) : true;
+                EdgeCdpPort = root["edgeCdpPort"] != null ? int.Parse(root["edgeCdpPort"].ToString()) : 9222;
+                ChromeCdpPort = root["chromeCdpPort"] != null ? int.Parse(root["chromeCdpPort"].ToString()) : 9223;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
                 _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
@@ -338,6 +355,10 @@ namespace RequestApi.Crawl
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
             root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
             root.Add("edgeWindowMode", (int)EdgeWindowMode);
+            root.Add("crawlBrowser", (int)CrawlBrowser);
+            root.Add("cdpPortAuto", CdpPortAuto);
+            root.Add("edgeCdpPort", EdgeCdpPort);
+            root.Add("chromeCdpPort", ChromeCdpPort);
 
             File.WriteAllText(saveFilePath, root.ToString());
         }

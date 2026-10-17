@@ -47,7 +47,7 @@ namespace RequestApi.Crawl
         protected abstract List<CrawlResult> ParseContent(HtmlDocument document);
 
         // 실패시 null
-        public List<CrawlResult> TryCrawl(EdgeWindowMode windowMode, out string errorMessage)
+        public List<CrawlResult> TryCrawl(EdgeWindowMode windowMode, int cdpPort, out string errorMessage)
         {
             errorMessage = "";
 
@@ -55,7 +55,7 @@ namespace RequestApi.Crawl
             {
                 string content = "";
 
-                if (!TryDownloadSource(windowMode, out content))
+                if (!TryDownloadSource(windowMode, cdpPort, out content))
                 {
                     errorMessage = $"[{CrawlType.ToStringInitial(Type)}] HTML 다운로드 실패";
                     return null;
@@ -85,12 +85,12 @@ namespace RequestApi.Crawl
 
         private static string GetFMLoginWallMessage()
         {
-            return "엣지 브라우저에서 에펨코리아에 로그인되어 있지 않습니다. 엣지에서 로그인한 뒤 다시 시도하세요.";
+            return "크롤링 브라우저(엣지 또는 크롬)에서 에펨코리아에 로그인되어 있지 않습니다. 해당 브라우저에서 로그인한 뒤 다시 시도하세요.";
         }
 
         // WebFetch.exe(Playwright)로 크롤링한다.
-        // WebFetch는 실행 중인 엣지(9222 포트)에 CDP로 접속해 HTML을 가져온다.
-        private bool TryDownloadSource(EdgeWindowMode windowMode, out string content)
+        // WebFetch는 실행 중인 브라우저(엣지/크롬)의 CDP 포트에 접속해 HTML을 가져온다.
+        private bool TryDownloadSource(EdgeWindowMode windowMode, int cdpPort, out string content)
         {
             content = "";
 
@@ -101,7 +101,7 @@ namespace RequestApi.Crawl
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = webFetchPath,
-                Arguments = $"{CrawlUrl.AbsoluteUri} {ToCliWindowMode(windowMode)}",
+                Arguments = $"{CrawlUrl.AbsoluteUri} {ToCliWindowMode(windowMode)} {cdpPort}",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,

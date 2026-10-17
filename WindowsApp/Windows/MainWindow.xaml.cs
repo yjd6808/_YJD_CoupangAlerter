@@ -276,6 +276,11 @@ namespace WindowsApp.Windows
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
+            _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
+            _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;
+            _tbEdgeCdpPort.Text = _crawlTaskManager.EdgeCdpPort.ToString();
+            _tbChromeCdpPort.Text = _crawlTaskManager.ChromeCdpPort.ToString();
+            _chkbCdpPortAuto_OnCheckedChanged(null, null);
         }
 
         private void MainWindow_OnClosed(object? sender, EventArgs e)
@@ -570,15 +575,22 @@ namespace WindowsApp.Windows
 
      
 
-        // 9222 포트로 디버깅이 허용된 엣지 브라우저가 실행 중인지 확인한다.
-        // WebFetch(Playwright)가 이 엣지에 CDP로 접속해 크롤링하므로 필수 조건이다.
-        private static bool IsCdpEdgeRunning()
+        private void _chkbCdpPortAuto_OnCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            bool autoDetect = _chkbCdpPortAuto.IsChecked == true;
+            _tbEdgeCdpPort.IsEnabled = !autoDetect;
+            _tbChromeCdpPort.IsEnabled = !autoDetect;
+        }
+
+        // 지정한 CDP 포트로 브라우저(엣지/크롬)가 열려 있는지 확인한다.
+        // WebFetch(Playwright)가 이 브라우저에 CDP로 접속해 크롤링하므로 필수 조건이다.
+        private static bool IsCdpRunning(int port)
         {
             try
             {
                 using (var client = new System.Net.Sockets.TcpClient())
                 {
-                    return client.ConnectAsync("127.0.0.1", 9222).Wait(1000) && client.Connected;
+                    return client.ConnectAsync("127.0.0.1", port).Wait(1000) && client.Connected;
                 }
             }
             catch
@@ -587,15 +599,51 @@ namespace WindowsApp.Windows
             }
         }
 
+        // 크롤링 시작에 사용할 CDP 포트를 결정한다.
+        // 자동 감지가 켜져 있으면 실행 중인 브라우저 프로세스의 명령줄에서 찾고,
+        // 찾지 못하면 수동 입력한 포트를 사용한다.
+        private int ResolveCdpPort(CrawlBrowser browser, out bool detected)
+        {
+            detected = false;
+
+            if (_crawlTaskManager.CdpPortAuto)
+            {
+                int port = CdpPortFinder.FindPort(browser);
+                if (port > 0)
+                {
+                    detected = true;
+                    return port;
+                }
+            }
+
+            return browser == CrawlBrowser.Chrome ? _crawlTaskManager.ChromeCdpPort : _crawlTaskManager.EdgeCdpPort;
+        }
+
+        // 브라우저별 CDP 실행 명령 예시
+        private static string GetBrowserLaunchCommand(CrawlBrowser browser, int port)
+        {
+            if (browser == CrawlBrowser.Chrome)
+                return $"chrome.exe --user-data-dir=\"%LOCALAPPDATA%\\Chrome-CDP\" --profile-directory=Default --remote-debugging-port={port}";
+
+            return $"msedge.exe --user-data-dir=\"%LOCALAPPDATA%\\Edge-CDP\" --profile-directory=Default --remote-debugging-port={port}";
+        }
+
         private void _btnStartCrawling_OnClick(object sender, RoutedEventArgs e)
         {
-            if (!IsCdpEdgeRunning())
+            CrawlBrowser browser = _crawlTaskManager.CrawlBrowser;
+            string browserName = browser == CrawlBrowser.Chrome ? "크롬" : "엣지";
+
+            int cdpPort = ResolveCdpPort(browser, out bool portDetected);
+
+            if (!IsCdpRunning(cdpPort))
             {
-                MsgBox.ShowTopMost("실행 중인 엣지 브라우저가 없습니다.\n\n" +
-                    "엣지를 다음 옵션으로 실행한 뒤 다시 시작해주세요.\n\n" +
-                    "msedge.exe -user-data-dir=\"%LOCALAPPDATA%\\Edge-CDP\" --profile-directory=Default --remote-debugging-port=9222");
+                MsgBox.ShowTopMost($"실행 중인 {browserName} 브라우저(CDP 포트 {cdpPort})에 접속할 수 없습니다.\n\n" +
+                    $"{browserName}을(를) 다음 옵션으로 실행한 뒤 다시 시작해주세요.\n\n" +
+                    GetBrowserLaunchCommand(browser, cdpPort));
                 return;
             }
+
+            _crawlTaskManager.CdpPort = cdpPort;
 
             _crawlTaskManager.Start();
             _btnStartCrawling.IsEnabled = false;
@@ -610,6 +658,7 @@ namespace WindowsApp.Windows
             else
                 _tblStatusBar.Text = "크롤링 시작 준비중";
 
+            AddNoticeLog($"{browserName} CDP 포트 {cdpPort} 사용" + (portDetected ? " (자동 감지)" : " (수동 설정)"));
             AddNoticeLog("크롤링 시작");
         }
 
@@ -923,6 +972,28 @@ namespace WindowsApp.Windows
             if (int.TryParse(_tbMaxMatchedDisplayCount.Text, out int maxDisplayCount) && maxDisplayCount > 0)
                 _crawlTaskManager.MaxMatchedDisplayCount = maxDisplayCount;
 
+            int edgeCdpPort = _crawlTaskManager.EdgeCdpPort;
+            int chromeCdpPort = _crawlTaskManager.ChromeCdpPort;
+
+            if (_chkbCdpPortAuto.IsChecked != true)
+            {
+                if (!int.TryParse(_tbEdgeCdpPort.Text, out edgeCdpPort) || edgeCdpPort < 1 || edgeCdpPort > 65535)
+                {
+                    MsgBox.ShowTopMost("엣지 포트를 1~65535 사이로 입력해주세요.");
+                    return;
+                }
+
+                if (!int.TryParse(_tbChromeCdpPort.Text, out chromeCdpPort) || chromeCdpPort < 1 || chromeCdpPort > 65535)
+                {
+                    MsgBox.ShowTopMost("크롬 포트를 1~65535 사이로 입력해주세요.");
+                    return;
+                }
+            }
+
+            _crawlTaskManager.CrawlBrowser = (CrawlBrowser)_cbCrawlBrowser.SelectedIndex;
+            _crawlTaskManager.CdpPortAuto = _chkbCdpPortAuto.IsChecked == true;
+            _crawlTaskManager.EdgeCdpPort = edgeCdpPort;
+            _crawlTaskManager.ChromeCdpPort = chromeCdpPort;
             _crawlTaskManager.EdgeWindowMode = (EdgeWindowMode)_cbEdgeWindowMode.SelectedIndex;
 
             _crawlTaskManager.CrawlDelay[CrawlType.DCInside] = dcCrawlDelay;
@@ -960,6 +1031,10 @@ namespace WindowsApp.Windows
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
+            _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
+            _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;
+            _tbEdgeCdpPort.Text = _crawlTaskManager.EdgeCdpPort.ToString();
+            _tbChromeCdpPort.Text = _crawlTaskManager.ChromeCdpPort.ToString();
             AddNoticeLog("설정 리로드 완료");
         }
 

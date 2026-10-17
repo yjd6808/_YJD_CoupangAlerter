@@ -448,7 +448,27 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0"
-                                       Text="엣지 창 모드"
+                                       Text="크롤링 브라우저"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <ComboBox Grid.Column="1"
+                                      Name="_cbCrawlBrowser"
+                                      SelectedIndex="0">
+                                <ComboBoxItem>엣지</ComboBoxItem>
+                                <ComboBoxItem>크롬</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="브라우저 창 모드"
                                        MouseEnter="TextBlock_OnMouseEnter"
                                        MouseLeave="TextBlock_OnMouseLeave"
                                        VerticalAlignment="Center"
@@ -460,6 +480,60 @@
                                 <ComboBoxItem>새 창</ComboBoxItem>
                                 <ComboBoxItem>새 창 (숨김)</ComboBoxItem>
                             </ComboBox>
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox Grid.Column="0"
+                                      x:Name="_chkbCdpPortAuto"
+                                      Checked="_chkbCdpPortAuto_OnCheckedChanged"
+                                      Unchecked="_chkbCdpPortAuto_OnCheckedChanged"
+                                      VerticalAlignment="Center">
+                            </CheckBox>
+
+                            <TextBlock Grid.Column="1"
+                                   Text="CDP 포트 자동 감지 (실행 중인 브라우저 프로세스에서 획득)"
+                                   VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="엣지 포트 (수동)"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Column="1"
+                                     Name="_tbEdgeCdpPort"
+                                     Text="9222"
+                                     PreviewTextInput="Number_PreviewTextInput" />
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="크롬 포트 (수동)"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Column="1"
+                                     Name="_tbChromeCdpPort"
+                                     Text="9223"
+                                     PreviewTextInput="Number_PreviewTextInput" />
                         </Grid>
 
                     </StackPanel>
