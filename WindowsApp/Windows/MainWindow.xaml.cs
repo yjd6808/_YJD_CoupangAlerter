@@ -218,14 +218,14 @@ namespace WindowsApp.Windows
                             reader.ReadBytes(8); // WAVE + fmt
                             reader.ReadInt32();
                             reader.ReadInt16();
-                            reader.ReadInt16();
+                            int channels = reader.ReadInt16();
                             int sampleRate = reader.ReadInt32();
                             reader.ReadInt32();
                             reader.ReadInt16();
                             int bitsPerSample = reader.ReadInt16();
                             reader.ReadBytes(4); // data
                             int dataSize = reader.ReadInt32();
-                            int durationMs = (int)((long)dataSize * 1000 / (sampleRate * bitsPerSample / 8));
+                            int durationMs = (int)((long)dataSize * 1000 / (sampleRate * bitsPerSample / 8 * channels));
                             Thread.Sleep(durationMs + 100);
                         }
                     }

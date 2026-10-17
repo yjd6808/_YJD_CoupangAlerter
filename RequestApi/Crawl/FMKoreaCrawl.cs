@@ -211,7 +211,12 @@ namespace RequestApi.Crawl
                         hour,
                         minute,
                         0);
-                    todayPost = true;
+
+                    // FM은 24시간 이내 글을 시:분만 표시하므로, 오늘 날짜로 해석한 시각이 미래라면 어제 작성된 글이다.
+                    if (writeDate > DateTime.Now)
+                        writeDate = writeDate.AddDays(-1);
+
+                    todayPost = writeDate.Date == DateTime.Now.Date;
                 }
                 else if (time.Contains("."))
                 {
