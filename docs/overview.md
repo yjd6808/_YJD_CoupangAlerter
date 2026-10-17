@@ -22,7 +22,7 @@
 5. CrawlTask가 매칭 판정
    - 매칭 대상: 닉네임 또는 제목
    - 문자열 규칙: 일부 포함 또는 정확히 일치
-   - 최근 N분(작업별 MatchingRangeMinute) 이내 작성 글만 유효
+   - 최근 N분(MatchingRangeMinute 설정, 기본 1440분=1일) 이내 작성 글만 유효
    - 이미 매칭된 글(PostId)은 제외
 6. 매칭 시 알림(점멸/소리/음성)과 매칭 목록 기록
    - 첫 크롤링 사이클에서 발견된 글은 메시지박스가 억제된다(시작 직후 과거 글 폭탄 방지). 소리/음성은 재생된다.
@@ -39,7 +39,7 @@
 
 | 키 | 의미 |
 |---|---|
-| crawls[] | 작업 목록 (taskName, crawlType, matchString, stringMatchRule, matchType, matchingRangeMinute, page, boardType, searchOption, searchContent) |
+| crawls[] | 작업 목록 (taskName, crawlType, matchString, stringMatchRule, matchType, page, boardType, searchOption, searchContent) |
 | dcCrawlDelay / fmCrawlDelay | 사이트별 크롤링 주기(ms) |
 | dcCrawlBlocked / fmCrawlBlocked | 사이트 크롤링 끄기/켜기 |
 | edgeWindowMode | 크롤링 시 브라우저 페이지를 여는 방식 (0=새 탭, 1=새 창, 2=새 창 숨김) |
@@ -47,6 +47,7 @@
 | cdpPortAuto | CDP 포트 자동 감지 사용 여부 (기본 true) |
 | edgeCdpPort / chromeCdpPort | 수동 지정 CDP 포트 (기본 엣지 9222 / 크롬 9223) |
 | maxMatchedDisplayCount | 매칭 결과 표시 최대 개수 |
+| matchingRangeMinute | 매칭 유효 시간 범위(분). 크롤 시점 기준 이 시간 이내 작성 글만 매칭 (기본 1440) |
 | crawlTaskUidSeq | 작업 고유번호 시퀀스 |
 
 - 구버전 파일의 `crawlMethod`, `fmLoginId`, `fmLoginPw` 키는 로드 시 무시되고 저장되지 않는다.

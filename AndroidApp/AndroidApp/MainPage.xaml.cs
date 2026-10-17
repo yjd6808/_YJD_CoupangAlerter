@@ -482,9 +482,9 @@ namespace AndroidApp
                 }
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
+                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, boardType, page);
                 else
-                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
+                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, boardType, page);
             }
             else if (_tbcCrawl.TabItems[CrawlType.FMKorea].IsSelected)
             {
@@ -507,9 +507,9 @@ namespace AndroidApp
                     searchContent = _tbFMCrawlSearchContent.Text.Trim();
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, searchOption, searchContent, boardType, page);
                 else
-                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, searchOption, searchContent, boardType, page);
 
             }
 

@@ -49,6 +49,9 @@ namespace RequestApi.Crawl
         public int EdgeCdpPort { get; set; } = 9222;
         public int ChromeCdpPort { get; set; } = 9223;
 
+        // 매칭 유효 시간 범위(분). 크롤 시점 기준 이 시간 이내에 작성된 글만 매칭 대상으로 판정한다.
+        public int MatchingRangeMinute { get; set; } = DefaultMatchingRange;
+
         // 크롤링 시작 시 결정된 실제 사용 CDP 포트 (자동 감지 결과가 반영되며 파일에 저장하지 않는다)
         public int CdpPort { get; set; } = 9222;
 
@@ -244,6 +247,7 @@ namespace RequestApi.Crawl
                 CdpPortAuto = root["cdpPortAuto"] != null ? bool.Parse(root["cdpPortAuto"].ToString()) : true;
                 EdgeCdpPort = root["edgeCdpPort"] != null ? int.Parse(root["edgeCdpPort"].ToString()) : 9222;
                 ChromeCdpPort = root["chromeCdpPort"] != null ? int.Parse(root["chromeCdpPort"].ToString()) : 9223;
+                MatchingRangeMinute = root["matchingRangeMinute"] != null ? int.Parse(root["matchingRangeMinute"].ToString()) : DefaultMatchingRange;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
                 _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
@@ -258,7 +262,6 @@ namespace RequestApi.Crawl
                     int matchRule = int.Parse(crawlObj["stringMatchRule"].ToString());
                     int matchType = int.Parse(crawlObj["matchType"].ToString());
                     string matchString = crawlObj["matchString"].ToString();
-                    int matchingRangeMinute = int.Parse(crawlObj["matchingRangeMinute"].ToString());
                     AbstractCrawl crawl = null;
                     switch (crawlType)
                     {
@@ -282,7 +285,6 @@ namespace RequestApi.Crawl
                         matchString, 
                         (CrawlStringMatchRule)matchRule,
                         (CrawlMatchType)matchType, 
-                        matchingRangeMinute, 
                         this,
                         uid
                     );
@@ -324,7 +326,6 @@ namespace RequestApi.Crawl
                     crawlObj.Add("crawlType", crawlTask.CrawlType);
                     crawlObj.Add("matchString", crawlTask.MatchContent);
                     crawlObj.Add("stringMatchRule", (int)crawlTask.StringMatchRule);
-                    crawlObj.Add("matchingRangeMinute", crawlTask.MatchingRangeMinute);
                     crawlObj.Add("matchType", (int)crawlTask.MatchType);
 
                     switch (crawlTask.CrawlType)
@@ -354,6 +355,7 @@ namespace RequestApi.Crawl
             root.Add("fmCrawlBlocked", _blockedCrawl[CrawlType.FMKorea]);
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
             root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
+            root.Add("matchingRangeMinute", MatchingRangeMinute);
             root.Add("edgeWindowMode", (int)EdgeWindowMode);
             root.Add("crawlBrowser", (int)CrawlBrowser);
             root.Add("cdpPortAuto", CdpPortAuto);
@@ -380,10 +382,10 @@ namespace RequestApi.Crawl
 
         
         // 빌더 패턴 고려할 것
-        public void RegisterDCCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = DefaultMatchingRange, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        public void RegisterDCCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, DCBoardType boardType = DCBoardType.전체글, int page = 1)
         {
             AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, this);
             
             lock (this)
                 _crawlList.Add(crawlTask);
@@ -391,10 +393,10 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        public void RegisterFMCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
+        public void RegisterFMCrawl(string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
         {
             AbstractCrawl crawl = new FMKoreaCrawl(searchOption, searchContent, boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, this);
 
             lock (this) 
                 _crawlList.Add(crawlTask);
@@ -403,10 +405,10 @@ namespace RequestApi.Crawl
 
         // 수정하고자하는 CrawlTask의 내용을 변경하는 행위 자체가 CrawlTask에서의 락 기능 구현을 강제해버리기 때문에 Idle 상태에서의 큰 성능저하가 발생한다.
         // 따라서 수정하고자하는 CrawlTask의 위치를 찾아낸 후 새로 생성 해서 동일한 위치에 삽입해주는 방식으로 구현하도록 한다.
-        public void ModifyDCCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute = DefaultMatchingRange, DCBoardType boardType = DCBoardType.전체글, int page = 1)
+        public void ModifyDCCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, DCBoardType boardType = DCBoardType.전체글, int page = 1)
         {
             AbstractCrawl crawl = new DCInsideCrawl(boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, this);
 
             
             lock (this)
@@ -422,10 +424,10 @@ namespace RequestApi.Crawl
             SaveTaskFile();
         }
 
-        public void ModifyFMCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, int matchingRangeMinute, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
+        public void ModifyFMCrawl(CrawlTask modifyTask, string taskName, string matchContent, CrawlStringMatchRule stringMatchRule, CrawlMatchType matchType, FMSearchOption searchOption, string searchContent, FMBoardType boardType = FMBoardType.전체, int page = 1)
         {
             AbstractCrawl crawl = new FMKoreaCrawl(searchOption, searchContent, boardType, page);
-            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, matchingRangeMinute, this);
+            CrawlTask crawlTask = new CrawlTask(taskName, crawl, matchContent, stringMatchRule, matchType, this);
 
             lock (this)
             {

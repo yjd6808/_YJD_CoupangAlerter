@@ -275,6 +275,7 @@ namespace WindowsApp.Windows
             _tbDCCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.DCInside].ToString();
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
+            _tbMatchingRangeMinute.Text = _crawlTaskManager.MatchingRangeMinute.ToString();
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
             _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;
@@ -883,9 +884,9 @@ namespace WindowsApp.Windows
                 }
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
+                    _crawlTaskManager.RegisterDCCrawl(taskName, matchContent, stringMatchRule, matchType, boardType, page);
                 else
-                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, boardType, page);
+                    _crawlTaskManager.ModifyDCCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, boardType, page);
             }
             else if (_selectedTabItem[CrawlType.FMKorea])
             {
@@ -910,9 +911,9 @@ namespace WindowsApp.Windows
                     searchContent = _tbFMCrawlSearchContent.Text.Trim();
 
                 if (modifyTask == null)
-                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.RegisterFMCrawl(taskName, matchContent, stringMatchRule, matchType, searchOption, searchContent, boardType, page);
                 else
-                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, CrawlTaskManager.DefaultMatchingRange, searchOption, searchContent, boardType, page);
+                    _crawlTaskManager.ModifyFMCrawl(modifyTask, taskName, matchContent, stringMatchRule, matchType, searchOption, searchContent, boardType, page);
             }
         }
 
@@ -969,8 +970,16 @@ namespace WindowsApp.Windows
                 return;
             }
 
+            if (!int.TryParse(_tbMatchingRangeMinute.Text, out int matchingRangeMinute) || matchingRangeMinute < 1)
+            {
+                MsgBox.ShowTopMost("매칭 시간 범위(분)를 1 이상 입력해주세요.");
+                return;
+            }
+
             if (int.TryParse(_tbMaxMatchedDisplayCount.Text, out int maxDisplayCount) && maxDisplayCount > 0)
                 _crawlTaskManager.MaxMatchedDisplayCount = maxDisplayCount;
+
+            _crawlTaskManager.MatchingRangeMinute = matchingRangeMinute;
 
             int edgeCdpPort = _crawlTaskManager.EdgeCdpPort;
             int chromeCdpPort = _crawlTaskManager.ChromeCdpPort;
@@ -1030,6 +1039,7 @@ namespace WindowsApp.Windows
             _chkbDCCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.DCInside];
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
+            _tbMatchingRangeMinute.Text = _crawlTaskManager.MatchingRangeMinute.ToString();
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
             _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;
