@@ -457,11 +457,9 @@ namespace WebFetch
 
         static async Task<string> FetchCdpAsync(string url)
         {
-            await EnsureBrowserAsync();
-
             using var playwright = await Playwright.CreateAsync();
-
             IBrowser browser;
+
             try
             {
                 browser = await playwright.Chromium.ConnectOverCDPAsync("http://localhost:9222",
