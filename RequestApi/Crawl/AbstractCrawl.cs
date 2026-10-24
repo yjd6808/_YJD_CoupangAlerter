@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using HtmlAgilityPack;
 using RequestApi.Crawl.Result;
 
@@ -112,15 +113,19 @@ namespace RequestApi.Crawl
 
             using (Process p = Process.Start(psi))
             {
-                content = p.StandardOutput.ReadToEnd();
-                string stdErr = p.StandardError.ReadToEnd();
-                p.WaitForExit(60000);
+                // stdout/stderr를 동시에 읽어야 한쪽 파이프가 가득 차서 프로세스가 멈추는 것을 막을 수 있다.
+                // ReadToEnd()를 먼저 호출하면 프로세스가 끝날 때까지 블록되므로 60초 타임아웃도 적용되지 않는다.
+                Task<string> stdoutTask = p.StandardOutput.ReadToEndAsync();
+                Task<string> stderrTask = p.StandardError.ReadToEndAsync();
 
-                if (!p.HasExited)
+                if (!p.WaitForExit(60000))
                 {
                     try { p.Kill(); } catch { }
                     throw new Exception("WebFetch 응답 시간 초과 (60초)");
                 }
+
+                content = stdoutTask.GetAwaiter().GetResult();
+                string stdErr = stderrTask.GetAwaiter().GetResult();
 
                 if (p.ExitCode != 0)
                     throw new Exception($"WebFetch 종료코드 {p.ExitCode}: {CleanProcessOutput(stdErr)}");
@@ -141,7 +146,7 @@ namespace RequestApi.Crawl
             return Regex.Replace(output, "\x1B\\[[0-9;]*[A-Za-z]", "").Trim();
         }
 
-        // 엣지 창 모드를 WebFetch.exe의 두 번째 인자(tab|window|hidden)로 변환한다.
+        // 엣지 창 모드를 WebFetch.exe의 두 번째 인자(tab|window|hidden|headless)로 변환한다.
         private static string ToCliWindowMode(EdgeWindowMode windowMode)
         {
             switch (windowMode)
@@ -150,6 +155,8 @@ namespace RequestApi.Crawl
                     return "window";
                 case EdgeWindowMode.Hidden:
                     return "hidden";
+                case EdgeWindowMode.Headless:
+                    return "headless";
                 default:
                     return "tab";
             }

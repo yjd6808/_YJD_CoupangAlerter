@@ -23,11 +23,11 @@ WindowsApp과 AndroidApp이 공용으로 사용한다.
 |---|---|
 | CrawlType.cs | 크롤링 대상 상수 (DCInside=0, FMKorea=1, Max=2) |
 | CrawlBrowser.cs | 크롤링에 사용할 브라우저 열거형 (Edge=0, Chrome=1) |
-| EdgeWindowMode.cs | 페이지를 여는 방식 열거형 (Tab=0, Window=1, Hidden=2) |
+| EdgeWindowMode.cs | 페이지를 여는 방식 열거형 (Tab=0, Window=1, Hidden=2, Headless=3) |
 | CrawlTaskManager.cs | 작업 목록 관리, tasks.json 로드/저장, 사이트별 워커 스레드 관리, 매칭 기록 보관, 통계 |
 | CrawlTaskWorker.cs | 사이트별 크롤링 주기 실행 워커 스레드 (작업 큐 + 주기 대기) |
 | CrawlTask.cs | 작업 단위. Do()에서 크롤링 → 매칭 판정 → 이벤트 발행 |
-| AbstractCrawl.cs | 크롤링 공통 절차. WebFetch.exe 실행, 로그인 벽 판정, 파싱 진입점 |
+| AbstractCrawl.cs | 크롤링 공통 절차. WebFetch.exe 실행, 로그인 벽 판정, 파싱 진입점. stdout/stderr 비동기 동시 읽기 + 60초 타임아웃 |
 | DCInsideCrawl.cs | DCInside 미국주식 갤러리 URL 구성 (전체글/개념글, 페이지) 및 파싱 |
 | FMKoreaCrawl.cs | FMKorea 주식 게시판 검색 URL 구성 (검색 옵션/카테고리/페이지) 및 파싱 |
 
@@ -54,7 +54,7 @@ WindowsApp과 AndroidApp이 공용으로 사용한다.
 
 | 파일 | 설명 |
 |---|---|
-| Program.cs | 실행 중인 엣지/크롬에 CDP 접속 → 페이지 열기 → HTML 표준출력. 인자 `url [tab/window/hidden] [port]` |
+| Program.cs | 실행 중인 엣지/크롬에 CDP 접속 → 페이지 열기 → HTML 표준출력. 인자 `url [tab/window/hidden/headless] [port]`. headless는 라이브 쿠키/UA만 읽어 별도 헤드리스 브라우저로 수집 |
 | WebFetch.csproj | Microsoft.Playwright 참조 |
 
 동작 방식 상세는 docs/edge-flow.md 참조.

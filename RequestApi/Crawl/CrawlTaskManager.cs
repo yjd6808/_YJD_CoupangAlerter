@@ -36,7 +36,7 @@ namespace RequestApi.Crawl
 
         public int MaxMatchedDisplayCount { get; set; } = 100;
 
-        // 크롤링 시 브라우저 페이지를 여는 방식 (새 탭 / 새 창 / 새 창 숨김)
+        // 크롤링 시 브라우저 페이지를 여는 방식 (새 탭 / 새 창 / 최소화 창 / 완전 무창)
         public EdgeWindowMode EdgeWindowMode { get; set; } = EdgeWindowMode.Tab;
 
         // 크롤링에 사용할 브라우저 (엣지 / 크롬)

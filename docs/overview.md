@@ -9,7 +9,7 @@
 | 프로젝트 | 종류 | 역할 |
 |---|---|---|
 | RequestApi | netstandard2.0 라이브러리 | 크롤링·매칭·설정 저장 등 핵심 기능. WindowsApp/AndroidApp 공용 |
-| WebFetch | net6.0 콘솔 앱 | 실행 중인 엣지/크롬(CDP)에 접속해 HTML을 추출하는 외부 도구. Microsoft.Playwright 사용 |
+| WebFetch | net6.0 콘솔 앱 | 실행 중인 엣지/크롬(CDP)에 접속해 HTML을 추출하는 외부 도구. Microsoft.Playwright 사용. 헤드리스 모드는 쿠키만 이식해 별도 브라우저로 수집 |
 | WindowsApp | net6.0-windows WPF 앱 | 윈도우 UI. RequestApi 사용, WebFetch.exe를 빌드 후 출력 폴더로 복사 |
 | AndroidApp / AndroidApp.Android | Xamarin.Forms | 안드로이드 앱(개발 진행 중). RequestApi 재사용 |
 
@@ -18,6 +18,8 @@
 1. WindowsApp에서 크롤링 시작
 2. CrawlTaskManager의 사이트별 워커 스레드(CrawlTaskWorker)가 CrawlTask를 크롤링 주기마다 실행
 3. CrawlTask.Do() → AbstractCrawl.TryCrawl(브라우저 창 모드, CDP 포트) → WebFetch.exe 실행 → HTML 획득
+   - 창 모드: 새 탭 / 새 창 / 최소화 창 / 완전 무창(헤드리스)
+   - 완전 무창은 라이브 브라우저에 페이지를 만들지 않고 쿠키만 복사해 별도 헤드리스 브라우저로 수집한다. 상세: docs/edge-flow.md
 4. HtmlAgilityPack으로 DOM 파싱 → CrawlResult 목록 생성
 5. CrawlTask가 매칭 판정
    - 매칭 대상: 닉네임 또는 제목
@@ -42,7 +44,7 @@
 | crawls[] | 작업 목록 (taskName, crawlType, matchString, stringMatchRule, matchType, page, boardType, searchOption, searchContent) |
 | dcCrawlDelay / fmCrawlDelay | 사이트별 크롤링 주기(ms) |
 | dcCrawlBlocked / fmCrawlBlocked | 사이트 크롤링 끄기/켜기 |
-| edgeWindowMode | 크롤링 시 브라우저 페이지를 여는 방식 (0=새 탭, 1=새 창, 2=새 창 숨김) |
+| edgeWindowMode | 크롤링 시 브라우저 페이지를 여는 방식 (0=새 탭, 1=새 창, 2=최소화 창, 3=완전 무창(헤드리스)) |
 | crawlBrowser | 크롤링에 사용할 브라우저 (0=엣지, 1=크롬) |
 | cdpPortAuto | CDP 포트 자동 감지 사용 여부 (기본 true) |
 | edgeCdpPort / chromeCdpPort | 수동 지정 CDP 포트 (기본 엣지 9222 / 크롬 9223) |
@@ -79,6 +81,23 @@ chrome.exe --user-data-dir="%LOCALAPPDATA%\Chrome-CDP" --profile-directory=Defau
 - Chromium 136 이후 버전은 기본 프로필에서 원격 디버깅을 차단하므로 `--user-data-dir`로 전용 프로필을 지정해야 한다.
 - FMKorea 크롤링은 로그인이 필요하므로 사용할 브라우저 프로필에서 로그인해 둔다. 앱은 계정 비밀번호를 저장하지 않으며, 로그인된 브라우저 세션(쿠키)을 그대로 사용한다.
 - 시작 버튼을 누르면 CDP 포트를 결정한다. 자동 감지가 켜져 있으면 실행 중인 브라우저 프로세스 명령줄에서 포트를 얻고, 실패하면 수동 입력한 포트를 사용한다. 이후 127.0.0.1:포트 접속 가능 여부를 검사하고, 안 되면 실행 방법을 안내한다.
+
+### 브라우저 창 모드
+
+설정의 '브라우저 창 모드'는 다음 4가지다.
+
+| 설정 표시 | edgeWindowMode | 동작 |
+|---|---|---|
+| 새 탭 | 0 | 기존 브라우저 창에 새 탭으로 연다 |
+| 새 창 | 1 | 새 브라우저 창으로 연다 |
+| 새 창 (최소화) | 2 | 최소화 상태의 새 창으로 연다 |
+| 완전 무창 (헤드리스) | 3 | 라이브 브라우저에 페이지를 만들지 않고, 쿠키만 복사한 별도 헤드리스 브라우저로 수집한다 |
+
+- 완전 무창은 창, 탭, 작업표시줄, 포커스, 마우스 변화가 모두 없다.
+- 라이브 브라우저의 로그인 세션을 그대로 사용하므로 별도 로그인은 필요 없다.
+- 같은 브라우저 실행 파일과 User-Agent를 사용해 `cf_clearance` 쿠키 호환성을 유지한다.
+- 라이브 브라우저는 닫지 않는다. WebFetch는 헤드리스 브라우저만 종료한다.
+- 문제가 생기면 새 탭/새 창/최소화 창 모드로 전환해 원인을 분리할 수 있다.
 
 ## 관련 문서
 
