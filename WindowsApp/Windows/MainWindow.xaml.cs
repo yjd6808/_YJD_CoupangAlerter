@@ -163,6 +163,8 @@ namespace WindowsApp.Windows
 
         private void OnCrawlRequest(CrawlTask task)
         {
+            // 크롤링 1회(작업 1회 실행)마다 알림 재생 상태를 초기화한다.
+            _matchedAlertPlayed[task.CrawlType] = false;
             UpdateStatusBar();
         }
 
@@ -172,7 +174,13 @@ namespace WindowsApp.Windows
             AddCrawlMatchedLog(matchedresult);
             Dispatcher.BeginInvoke(() => RebuildMatchedResultsView());
 
-            TryPlayCompleteSound();
+            // 같은 크롤링 실행에서 매칭이 여러 건이어도 소리/음성은 1회만 재생한다.
+            if (!_matchedAlertPlayed[crawl.CrawlType])
+            {
+                _matchedAlertPlayed[crawl.CrawlType] = true;
+                TryPlayCompleteSound();
+                TryPlayMatchedSpeech();
+            }
 
             if (!matchedresult.IsSuppressed)
             {
@@ -180,18 +188,25 @@ namespace WindowsApp.Windows
                     MsgBox.ShowTopMost($"[{CrawlType.ToStringInitial(matchedresult.Result.CrawlType)}] {matchedresult.Result.Title}", "매칭 결과")
                 );
             }
+        }
 
+        private void TryPlayMatchedSpeech()
+        {
             if (_speeching)
                 return;
 
+            // Task.Run 내부에서 플래그를 세우면 연속 호출 시 여러 음성이 큐에 쌓일 수 있으므로
+            // 예약 전에 먼저 점유한다.
+            _speeching = true;
             Task.Run(() =>
             {
-                _speeching = true;
-                _speechSynthesizer.Speak("found matched result!");
-            }).ContinueWith(x => _speeching = false);
+                try { _speechSynthesizer.Speak("found matched result!"); }
+                finally { _speeching = false; }
+            });
         }
 
         private volatile bool _soundPlaying = false;
+        private readonly bool[] _matchedAlertPlayed = new bool[CrawlType.Max];
 
         private void TryPlayCompleteSound()
         {
