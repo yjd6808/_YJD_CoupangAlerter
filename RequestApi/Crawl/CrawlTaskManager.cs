@@ -52,6 +52,10 @@ namespace RequestApi.Crawl
         // 매칭 유효 시간 범위(분). 크롤 시점 기준 이 시간 이내에 작성된 글만 매칭 대상으로 판정한다.
         public int MatchingRangeMinute { get; set; } = DefaultMatchingRange;
 
+        // 크롤링 실패 알림 최소 간격(분). 마지막 실패 알림 후 이 시간이 지나야 다시 재생한다.
+        // 0이면 매 실패마다 재생한다.
+        public int FailureAlertIntervalMinute { get; set; } = DefaultFailureAlertInterval;
+
         // 크롤링 시작 시 결정된 실제 사용 CDP 포트 (자동 감지 결과가 반영되며 파일에 저장하지 않는다)
         public int CdpPort { get; set; } = 9222;
 
@@ -99,6 +103,7 @@ namespace RequestApi.Crawl
         // 이걸 기록안하면 매칭된 게시글 결과 정보가 계속 누적되게 될 수 있으므로 주기적으로 확인해서 비워줄 필요가 있다.
         public static TimeSpan ExpiredDuration => new TimeSpan(1, 0, 0, 0);
         public const int DefaultMatchingRange = 1440;
+        public const int DefaultFailureAlertInterval = 3;
 
         private Thread _workerThread;
 
@@ -248,6 +253,7 @@ namespace RequestApi.Crawl
                 EdgeCdpPort = root["edgeCdpPort"] != null ? int.Parse(root["edgeCdpPort"].ToString()) : 9222;
                 ChromeCdpPort = root["chromeCdpPort"] != null ? int.Parse(root["chromeCdpPort"].ToString()) : 9223;
                 MatchingRangeMinute = root["matchingRangeMinute"] != null ? int.Parse(root["matchingRangeMinute"].ToString()) : DefaultMatchingRange;
+                FailureAlertIntervalMinute = root["failureAlertIntervalMinute"] != null ? int.Parse(root["failureAlertIntervalMinute"].ToString()) : DefaultFailureAlertInterval;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
                 _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
@@ -356,6 +362,7 @@ namespace RequestApi.Crawl
             root.Add("crawlTaskUidSeq", Interlocked.Read(ref CrawlTask.s_uidSeq));
             root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
             root.Add("matchingRangeMinute", MatchingRangeMinute);
+            root.Add("failureAlertIntervalMinute", FailureAlertIntervalMinute);
             root.Add("edgeWindowMode", (int)EdgeWindowMode);
             root.Add("crawlBrowser", (int)CrawlBrowser);
             root.Add("cdpPortAuto", CdpPortAuto);

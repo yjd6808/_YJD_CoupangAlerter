@@ -192,6 +192,11 @@ namespace WindowsApp.Windows
 
         private void TryPlayMatchedSpeech()
         {
+            TryPlaySpeech("found matched result!");
+        }
+
+        private void TryPlaySpeech(string text)
+        {
             if (_speeching)
                 return;
 
@@ -200,13 +205,15 @@ namespace WindowsApp.Windows
             _speeching = true;
             Task.Run(() =>
             {
-                try { _speechSynthesizer.Speak("found matched result!"); }
+                try { _speechSynthesizer.Speak(text); }
                 finally { _speeching = false; }
             });
         }
 
         private volatile bool _soundPlaying = false;
         private readonly bool[] _matchedAlertPlayed = new bool[CrawlType.Max];
+        private readonly object _failureAlertLock = new object();
+        private DateTime _lastFailureAlertTime = DateTime.MinValue;
 
         private void TryPlayCompleteSound()
         {
@@ -257,6 +264,32 @@ namespace WindowsApp.Windows
 
             if (errorMessage != string.Empty)
                 Dispatcher.BeginInvoke(() => AddNoticeLog(errorMessage));
+
+            // 실패 알림은 설정한 최소 간격마다 최대 1회만 재생한다.
+            // 첫 실패는 항상 재생되고, 간격이 지나기 전의 연속 실패는 무시한다.
+            int intervalMinute = Math.Max(0, _crawlTaskManager.FailureAlertIntervalMinute);
+            bool playAlert;
+
+            lock (_failureAlertLock)
+            {
+                DateTime now = DateTime.Now;
+
+                if (now - _lastFailureAlertTime >= TimeSpan.FromMinutes(intervalMinute))
+                {
+                    _lastFailureAlertTime = now;
+                    playAlert = true;
+                }
+                else
+                {
+                    playAlert = false;
+                }
+            }
+
+            if (playAlert)
+            {
+                TryPlayCompleteSound();
+                TryPlaySpeech("warning, warning");
+            }
         }
 
         private void OnCrawlSuccess(CrawlTask crawl, List<CrawlResult> crawlresult)
@@ -291,6 +324,7 @@ namespace WindowsApp.Windows
             _tbFMCrawlDelay.Text = _crawlTaskManager.CrawlDelay[CrawlType.FMKorea].ToString();
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
             _tbMatchingRangeMinute.Text = _crawlTaskManager.MatchingRangeMinute.ToString();
+            _tbFailureAlertIntervalMinute.Text = _crawlTaskManager.FailureAlertIntervalMinute.ToString();
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
             _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;
@@ -991,10 +1025,17 @@ namespace WindowsApp.Windows
                 return;
             }
 
+            if (!int.TryParse(_tbFailureAlertIntervalMinute.Text, out int failureAlertIntervalMinute) || failureAlertIntervalMinute < 0)
+            {
+                MsgBox.ShowTopMost("실패 알림 최소 간격(분)을 0 이상 입력해주세요.");
+                return;
+            }
+
             if (int.TryParse(_tbMaxMatchedDisplayCount.Text, out int maxDisplayCount) && maxDisplayCount > 0)
                 _crawlTaskManager.MaxMatchedDisplayCount = maxDisplayCount;
 
             _crawlTaskManager.MatchingRangeMinute = matchingRangeMinute;
+            _crawlTaskManager.FailureAlertIntervalMinute = failureAlertIntervalMinute;
 
             int edgeCdpPort = _crawlTaskManager.EdgeCdpPort;
             int chromeCdpPort = _crawlTaskManager.ChromeCdpPort;
@@ -1055,6 +1096,7 @@ namespace WindowsApp.Windows
             _chkbFMCrawlEnable.IsChecked = !_crawlTaskManager.BlockedCrawl[CrawlType.FMKorea];
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
             _tbMatchingRangeMinute.Text = _crawlTaskManager.MatchingRangeMinute.ToString();
+            _tbFailureAlertIntervalMinute.Text = _crawlTaskManager.FailureAlertIntervalMinute.ToString();
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
             _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;

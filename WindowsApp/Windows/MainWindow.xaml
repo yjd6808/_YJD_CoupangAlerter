@@ -466,6 +466,24 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0"
+                                       Text="실패 알림 최소 간격 (분)"
+                                       MouseEnter="TextBlock_OnMouseEnter"
+                                       MouseLeave="TextBlock_OnMouseLeave"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Column="1"
+                                     Name="_tbFailureAlertIntervalMinute"
+                                     Text="3"
+                                     PreviewTextInput="Number_PreviewTextInput" />
+                        </Grid>
+
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"></ColumnDefinition>
+                                <ColumnDefinition Width="*"></ColumnDefinition>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
                                        Text="크롤링 브라우저"
                                        MouseEnter="TextBlock_OnMouseEnter"
                                        MouseLeave="TextBlock_OnMouseLeave"
