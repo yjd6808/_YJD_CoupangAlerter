@@ -265,6 +265,10 @@ namespace WindowsApp.Windows
             if (errorMessage != string.Empty)
                 Dispatcher.BeginInvoke(() => AddNoticeLog(errorMessage));
 
+            // 경고 알림은 옵션이 켜져 있고, CDP 포트 연결 실패일 때만 재생한다.
+            if (!_crawlTaskManager.FailureAlertEnabled || !AbstractCrawl.IsCdpConnectionFailure(errorMessage))
+                return;
+
             // 실패 알림은 설정한 최소 간격마다 최대 1회만 재생한다.
             // 첫 실패는 항상 재생되고, 간격이 지나기 전의 연속 실패는 무시한다.
             int intervalMinute = Math.Max(0, _crawlTaskManager.FailureAlertIntervalMinute);
@@ -325,6 +329,7 @@ namespace WindowsApp.Windows
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
             _tbMatchingRangeMinute.Text = _crawlTaskManager.MatchingRangeMinute.ToString();
             _tbFailureAlertIntervalMinute.Text = _crawlTaskManager.FailureAlertIntervalMinute.ToString();
+            _chkbFailureAlertEnable.IsChecked = _crawlTaskManager.FailureAlertEnabled;
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
             _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;
@@ -990,6 +995,14 @@ namespace WindowsApp.Windows
                 _crawlTaskManager.BlockedCrawl[CrawlType.FMKorea] = true;
         }
 
+        private void _chkbFailureAlertEnable_OnCheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_chkbFailureAlertEnable.IsChecked == null)
+                return;
+
+            _crawlTaskManager.FailureAlertEnabled = _chkbFailureAlertEnable.IsChecked.Value;
+        }
+
         private void _btnSaveSetting_OnClicked(object sender, EventArgs e)
         {
             if (_crawlTaskManager.Running)
@@ -1097,6 +1110,7 @@ namespace WindowsApp.Windows
             _tbMaxMatchedDisplayCount.Text = _crawlTaskManager.MaxMatchedDisplayCount.ToString();
             _tbMatchingRangeMinute.Text = _crawlTaskManager.MatchingRangeMinute.ToString();
             _tbFailureAlertIntervalMinute.Text = _crawlTaskManager.FailureAlertIntervalMinute.ToString();
+            _chkbFailureAlertEnable.IsChecked = _crawlTaskManager.FailureAlertEnabled;
             _cbEdgeWindowMode.SelectedIndex = (int)_crawlTaskManager.EdgeWindowMode;
             _cbCrawlBrowser.SelectedIndex = (int)_crawlTaskManager.CrawlBrowser;
             _chkbCdpPortAuto.IsChecked = _crawlTaskManager.CdpPortAuto;

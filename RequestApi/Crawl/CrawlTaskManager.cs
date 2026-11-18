@@ -56,6 +56,9 @@ namespace RequestApi.Crawl
         // 0이면 매 실패마다 재생한다.
         public int FailureAlertIntervalMinute { get; set; } = DefaultFailureAlertInterval;
 
+        // 크롤링 실패 알림(경고음) 사용 여부. 실제 재생은 CDP 포트 연결 실패에만 동작한다.
+        public bool FailureAlertEnabled { get; set; } = true;
+
         // 크롤링 시작 시 결정된 실제 사용 CDP 포트 (자동 감지 결과가 반영되며 파일에 저장하지 않는다)
         public int CdpPort { get; set; } = 9222;
 
@@ -254,6 +257,7 @@ namespace RequestApi.Crawl
                 ChromeCdpPort = root["chromeCdpPort"] != null ? int.Parse(root["chromeCdpPort"].ToString()) : 9223;
                 MatchingRangeMinute = root["matchingRangeMinute"] != null ? int.Parse(root["matchingRangeMinute"].ToString()) : DefaultMatchingRange;
                 FailureAlertIntervalMinute = root["failureAlertIntervalMinute"] != null ? int.Parse(root["failureAlertIntervalMinute"].ToString()) : DefaultFailureAlertInterval;
+                FailureAlertEnabled = root["failureAlertEnabled"] != null ? bool.Parse(root["failureAlertEnabled"].ToString()) : true;
 
                 _taskWorkers[CrawlType.DCInside].SetDelay(CrawlDelay[CrawlType.DCInside]);
                 _taskWorkers[CrawlType.FMKorea].SetDelay(CrawlDelay[CrawlType.FMKorea]);
@@ -363,6 +367,7 @@ namespace RequestApi.Crawl
             root.Add("maxMatchedDisplayCount", MaxMatchedDisplayCount);
             root.Add("matchingRangeMinute", MatchingRangeMinute);
             root.Add("failureAlertIntervalMinute", FailureAlertIntervalMinute);
+            root.Add("failureAlertEnabled", FailureAlertEnabled);
             root.Add("edgeWindowMode", (int)EdgeWindowMode);
             root.Add("crawlBrowser", (int)CrawlBrowser);
             root.Add("cdpPortAuto", CdpPortAuto);

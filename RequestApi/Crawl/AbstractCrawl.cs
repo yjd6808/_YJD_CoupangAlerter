@@ -28,6 +28,15 @@ namespace RequestApi.Crawl
         public int Type { get; }
         public Uri CrawlUrl { get; }
 
+        // WebFetch가 CDP 포트에 접속하지 못해 발생한 실패인지 판정한다.
+        // 경고 알림은 이 경우에만 재생한다(로그인 벽, 파싱 실패, 타임아웃 등은 제외).
+        public static bool IsCdpConnectionFailure(string errorMessage)
+        {
+            return errorMessage != null
+                && errorMessage.Contains("CDP 포트")
+                && errorMessage.Contains("접속하지 못했습니다");
+        }
+
         protected AbstractCrawl(Uri reqUrl, int type)
         {
             CrawlUrl = reqUrl;
